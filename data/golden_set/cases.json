@@ -1,0 +1,202 @@
+{
+  "version": "1.0",
+  "guia": "Guias Colombianas SCC/LATAM",
+  "altitud_por_defecto_msnm": 2640,
+  "descripcion": "Casos de referencia para validar extraccion/validacion de datos y recomendaciones por reglas. Los valores usan las claves internas de Patient (ver src/models/param_registry.py).",
+  "casos": [
+    {
+      "id": "G001",
+      "nombre": "Varon adulto sano",
+      "sexo": "M",
+      "altitud_msnm": 2640,
+      "valores": {
+        "ddi": 48, "dsi": 30, "ppvi": 9, "sivi": 10,
+        "masa_vi": 180, "masa_vi_ind": 95, "rvdi": 110, "rvsi": 45,
+        "fevi": 62, "diametro_ai": 34, "volumen_ai": 25, "diametro_vd": 32,
+        "tad": 22, "fsr": 38, "gradiente_media_mi": 3, "gradiente_max_mi": 6,
+        "area_mi": 5, "gradiente_media_ao": 8, "gradiente_max_ao": 14,
+        "area_ao": 3.2, "velocidad_insuf_ao": 1.8, "psap": 28
+      },
+      "esperado": {
+        "anormales": [],
+        "recomendaciones": []
+      }
+    },
+    {
+      "id": "G002",
+      "nombre": "Varon con FEVI reducida y VI dilatado",
+      "sexo": "M",
+      "altitud_msnm": 2640,
+      "valores": {
+        "ddi": 64, "dsi": 50, "ppvi": 9, "sivi": 10,
+        "masa_vi": 190, "masa_vi_ind": 100, "rvdi": 175, "rvsi": 120,
+        "fevi": 30, "diametro_ai": 35, "volumen_ai": 26, "diametro_vd": 33,
+        "tad": 21, "fsr": 37, "gradiente_media_mi": 3, "gradiente_max_mi": 6,
+        "area_mi": 5, "gradiente_media_ao": 8, "gradiente_max_ao": 14,
+        "area_ao": 3.2, "velocidad_insuf_ao": 1.8, "psap": 28
+      },
+      "esperado": {
+        "anormales": ["DDI (mm)", "DSI (mm)", "RVDI (ml)", "RVSI (ml)", "FEVI (%)"],
+        "recomendaciones": [
+          "Diametro diastolico elevado: valorar dilatacion del ventriculo izquierdo.",
+          "Diametro sistolico elevado: valorar dilatacion o disfuncion del ventriculo izquierdo.",
+          "Volumen diastolico elevado: valorar dilatacion del ventriculo izquierdo.",
+          "Volumen sistolico elevado: valorar dilatacion o disfuncion del ventriculo izquierdo.",
+          "FEVI reducida: valorar disfuncion sistolica del ventriculo izquierdo y seguimiento ecocardiografico."
+        ]
+      }
+    },
+    {
+      "id": "G003",
+      "nombre": "Mujer con hipertrofia ventricular izquierda",
+      "sexo": "F",
+      "altitud_msnm": 2640,
+      "valores": {
+        "ddi": 44, "dsi": 28, "ppvi": 13, "sivi": 14,
+        "masa_vi": 200, "masa_vi_ind": 130, "rvdi": 80, "rvsi": 32,
+        "fevi": 63, "diametro_ai": 33, "volumen_ai": 25, "diametro_vd": 31,
+        "tad": 21, "fsr": 37, "gradiente_media_mi": 3, "gradiente_max_mi": 6,
+        "area_mi": 5, "gradiente_media_ao": 8, "gradiente_max_ao": 14,
+        "area_ao": 3.2, "velocidad_insuf_ao": 1.8, "psap": 28
+      },
+      "esperado": {
+        "anormales": ["PPVI (mm)", "SIVI (mm)", "Masa VI (g)", "Masa VI ind. (g/m2)"],
+        "recomendaciones": [
+          "Grosor de pared posterior elevado: valorar hipertrofia ventricular izquierda.",
+          "Septum interventricular engrosado: valorar hipertrofia ventricular izquierda.",
+          "Masa ventricular elevada: valorar hipertrofia ventricular izquierda.",
+          "Indice de masa ventricular elevado: valorar hipertrofia ventricular izquierda."
+        ]
+      }
+    },
+    {
+      "id": "G004",
+      "nombre": "Mujer con estenosis mitral severa",
+      "sexo": "F",
+      "altitud_msnm": 2640,
+      "valores": {
+        "ddi": 44, "dsi": 28, "ppvi": 8, "sivi": 9,
+        "masa_vi": 120, "masa_vi_ind": 75, "rvdi": 80, "rvsi": 32,
+        "fevi": 63, "diametro_ai": 40, "volumen_ai": 36, "diametro_vd": 33,
+        "tad": 21, "fsr": 37, "gradiente_media_mi": 11, "gradiente_max_mi": 22,
+        "area_mi": 1.2, "gradiente_media_ao": 8, "gradiente_max_ao": 14,
+        "area_ao": 3.0, "velocidad_insuf_ao": 1.8, "psap": 45
+      },
+      "esperado": {
+        "anormales": ["Grad. medio MI (mmHg)", "Grad. max MI (mmHg)", "Area MI (cm2)", "Diametro AI (mm)", "Volumen AI ind. (ml/m2)", "PSAP (mmHg)"],
+        "recomendaciones": [
+          "Auricula izquierda dilatada: valorar presiones de llenado y fibrilacion auricular.",
+          "Volumen auricular elevado: valorar dilatacion de la auricula izquierda.",
+          "Gradiente medio mitral elevado: valorar estenosis mitral.",
+          "Gradiente maximo mitral elevado: valorar estenosis mitral.",
+          "Area mitral reducida: valorar estenosis mitral.",
+          "PSAP elevado: valorar hipertension pulmonar (ajustado por altitud)."
+        ]
+      }
+    },
+    {
+      "id": "G005",
+      "nombre": "Varon con estenosis aortica severa",
+      "sexo": "M",
+      "altitud_msnm": 2640,
+      "valores": {
+        "ddi": 47, "dsi": 29, "ppvi": 10, "sivi": 11,
+        "masa_vi": 200, "masa_vi_ind": 105, "rvdi": 110, "rvsi": 45,
+        "fevi": 58, "diametro_ai": 36, "volumen_ai": 27, "diametro_vd": 33,
+        "tad": 22, "fsr": 38, "gradiente_media_mi": 3, "gradiente_max_mi": 6,
+        "area_mi": 5, "gradiente_media_ao": 48, "gradiente_max_ao": 84,
+        "area_ao": 0.8, "velocidad_insuf_ao": 4.5, "psap": 30
+      },
+      "esperado": {
+        "anormales": ["Grad. medio AO (mmHg)", "Grad. max AO (mmHg)", "Area AO (cm2)", "Vel. insuf. AO (m/s)"],
+        "recomendaciones": [
+          "Gradiente medio aortico elevado: valorar estenosis aortica.",
+          "Gradiente maximo aortico elevado: valorar estenosis aortica.",
+          "Area aortica reducida: valorar estenosis aortica.",
+          "Velocidad de insuficiencia aortica elevada: valorar el grado de regurgitacion."
+        ]
+      }
+    },
+    {
+      "id": "G006",
+      "nombre": "Mujer con auricula y ventriculo derecho dilatados",
+      "sexo": "F",
+      "altitud_msnm": 2640,
+      "valores": {
+        "ddi": 43, "dsi": 27, "ppvi": 8, "sivi": 9,
+        "masa_vi": 110, "masa_vi_ind": 70, "rvdi": 90, "rvsi": 36,
+        "fevi": 64, "diametro_ai": 46, "volumen_ai": 42, "diametro_vd": 45,
+        "tad": 20, "fsr": 36, "gradiente_media_mi": 3, "gradiente_max_mi": 6,
+        "area_mi": 5, "gradiente_media_ao": 8, "gradiente_max_ao": 14,
+        "area_ao": 3.0, "velocidad_insuf_ao": 1.8, "psap": 35
+      },
+      "esperado": {
+        "anormales": ["Diametro AI (mm)", "Volumen AI ind. (ml/m2)", "Diametro VD (mm)"],
+        "recomendaciones": [
+          "Auricula izquierda dilatada: valorar presiones de llenado y fibrilacion auricular.",
+          "Volumen auricular elevado: valorar dilatacion de la auricula izquierda.",
+          "Ventriculo derecho dilatado: valorar patologia del ventriculo derecho."
+        ]
+      }
+    },
+    {
+      "id": "G007",
+      "nombre": "Varon con disfuncion del ventriculo derecho",
+      "sexo": "M",
+      "altitud_msnm": 2640,
+      "valores": {
+        "ddi": 48, "dsi": 30, "ppvi": 9, "sivi": 10,
+        "masa_vi": 180, "masa_vi_ind": 95, "rvdi": 115, "rvsi": 48,
+        "fevi": 60, "diametro_ai": 35, "volumen_ai": 26, "diametro_vd": 36,
+        "tad": 14, "fsr": 26, "gradiente_media_mi": 3, "gradiente_max_mi": 6,
+        "area_mi": 5, "gradiente_media_ao": 8, "gradiente_max_ao": 14,
+        "area_ao": 3.2, "velocidad_insuf_ao": 1.8, "psap": 35
+      },
+      "esperado": {
+        "anormales": ["TAPSE (mm)", "FSR (%)"],
+        "recomendaciones": [
+          "TAPSE reducido: valorar funcion del ventriculo derecho.",
+          "FSR reducido: valorar funcion sistolica del ventriculo derecho."
+        ]
+      }
+    },
+    {
+      "id": "G008",
+      "nombre": "Varon con PSAP elevado a nivel del mar",
+      "sexo": "M",
+      "altitud_msnm": 0,
+      "valores": {
+        "ddi": 48, "dsi": 30, "ppvi": 9, "sivi": 10,
+        "masa_vi": 180, "masa_vi_ind": 95, "rvdi": 110, "rvsi": 45,
+        "fevi": 62, "diametro_ai": 34, "volumen_ai": 25, "diametro_vd": 32,
+        "tad": 22, "fsr": 38, "gradiente_media_mi": 3, "gradiente_max_mi": 6,
+        "area_mi": 5, "gradiente_media_ao": 8, "gradiente_max_ao": 14,
+        "area_ao": 3.2, "velocidad_insuf_ao": 1.8, "psap": 36
+      },
+      "esperado": {
+        "anormales": ["PSAP (mmHg)"],
+        "recomendaciones": [
+          "PSAP elevado: valorar hipertension pulmonar (ajustado por altitud)."
+        ]
+      }
+    },
+    {
+      "id": "G009",
+      "nombre": "Mismo PSAP a 2640 msnm es normal (ajuste por altitud)",
+      "sexo": "M",
+      "altitud_msnm": 2640,
+      "valores": {
+        "ddi": 48, "dsi": 30, "ppvi": 9, "sivi": 10,
+        "masa_vi": 180, "masa_vi_ind": 95, "rvdi": 110, "rvsi": 45,
+        "fevi": 62, "diametro_ai": 34, "volumen_ai": 25, "diametro_vd": 32,
+        "tad": 22, "fsr": 38, "gradiente_media_mi": 3, "gradiente_max_mi": 6,
+        "area_mi": 5, "gradiente_media_ao": 8, "gradiente_max_ao": 14,
+        "area_ao": 3.2, "velocidad_insuf_ao": 1.8, "psap": 36
+      },
+      "esperado": {
+        "anormales": [],
+        "recomendaciones": []
+      }
+    }
+  ]
+}
