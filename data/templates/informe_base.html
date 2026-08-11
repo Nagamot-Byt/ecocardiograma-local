@@ -271,6 +271,22 @@
     </div>
     {% endif %}
 
+    <!-- Sugerencias automaticas por valores fuera de rango -->
+    {% if recomendaciones_reglas %}
+    <div class="section">
+        <h2>Sugerencias de Seguimiento</h2>
+        <p style="font-size: 9pt; color: #777; margin-bottom: 6px;">
+            Generadas automaticamente a partir de los valores fuera de rango.
+            No sustituyen la interpretacion del medico tratante.
+        </p>
+        <ul style="margin-left: 20px;">
+            {% for r in recomendaciones_reglas %}
+            <li>{{ r }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
     <!-- Resumen de validacion -->
     <div class="section">
         <h2>Resumen</h2>

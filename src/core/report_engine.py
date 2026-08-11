@@ -14,6 +14,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from src.models.patient import Patient
 from src.core.validator import Validator
 from src.core.visual_input import VisualInputHandler
+from src.core.recommendations import get_rule_based_recommendations
 from src.models.colombian_reference import psap_upper_limit
 from src.utils.logger import setup_logger
 from src.utils.helpers import format_number, safe_filename
@@ -162,6 +163,9 @@ class ReportEngine:
         # Tabla de validacion
         validation_rows = validator.get_validation_table(patient)
 
+        # Recomendaciones objetivas por reglas (valores fuera de rango)
+        recomendaciones_reglas = get_rule_based_recommendations(validation_rows)
+
         # Datos numericos formateados
         numeric_data = patient.get_numeric_fields()
         numeric_formatted = {
@@ -215,6 +219,7 @@ class ReportEngine:
             # IA
             "impresion_clinica": patient.impresion_clinica or "",
             "recomendaciones": list(patient.recomendaciones or []),
+            "recomendaciones_reglas": recomendaciones_reglas,
             "guia_nombre": self.guide_name,
             "ia_model": patient.ia_model or "",
             "ia_source": patient.ia_source or "",

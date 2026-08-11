@@ -70,6 +70,67 @@ class TestDataLoader:
         result = loader.load_patient_from_file("/nonexistent/file.csv", patient)
         assert result is False
 
+    def test_load_patient_selecciona_fila(self, temp_ase_files, tmp_path):
+        """Con varias filas, ``row`` elige cual usar."""
+        data = {
+            "DDI": [50, 60],
+            "FEVI": [60, 30],
+        }
+        filepath = str(tmp_path / "multi.csv")
+        pd.DataFrame(data).to_csv(filepath, index=False)
+
+        loader = DataLoader(*temp_ase_files)
+
+        patient0 = Patient()
+        assert loader.load_patient_from_file(filepath, patient0, row=0) is True
+        assert patient0.ddi == 50.0
+        assert loader.last_loaded_row == 0
+        assert loader.last_row_count == 2
+
+        patient1 = Patient()
+        assert loader.load_patient_from_file(filepath, patient1, row=1) is True
+        assert patient1.ddi == 60.0
+        assert loader.last_loaded_row == 1
+
+    def test_load_patient_fila_fuera_de_rango_usa_primera(self, temp_ase_files, tmp_path):
+        data = {"DDI": [50, 60], "FEVI": [60, 30]}
+        filepath = str(tmp_path / "multi.csv")
+        pd.DataFrame(data).to_csv(filepath, index=False)
+
+        loader = DataLoader(*temp_ase_files)
+        patient = Patient()
+        assert loader.load_patient_from_file(filepath, patient, row=99) is True
+        assert patient.ddi == 50.0
+        assert loader.last_loaded_row == 0
+
+    def test_template_columns_tienen_mapeo_valido(self):
+        from src.core.data_loader import DataLoader
+
+        columnas = DataLoader.template_columns()
+        mapeo = DataLoader._build_column_mapping()
+        assert len(columnas) >= 20
+        for col in columnas:
+            assert col in mapeo, f"Columna de plantilla sin mapeo: {col}"
+
+    def test_template_xlsx_generado_se_puede_cargar(self, tmp_path):
+        """La plantilla generada con openpyxl debe ser legible por DataLoader."""
+        from openpyxl import Workbook
+
+        filepath = str(tmp_path / "plantilla.xlsx")
+        wb = Workbook()
+        ws = wb.active
+        columnas = DataLoader.template_columns()
+        for col, (nombre, ejemplo) in enumerate(columnas.items(), start=1):
+            ws.cell(row=1, column=col, value=nombre)
+            ws.cell(row=2, column=col, value=ejemplo)
+        wb.save(filepath)
+
+        loader = DataLoader("/nonexistent/h.xlsx", "/nonexistent/m.xlsx")
+        patient = Patient()
+        assert loader.load_patient_from_file(filepath, patient) is True
+        assert patient.fevi == 60.0
+        assert patient.psap == 28.0
+
 
 class TestReferenceRanges:
     def test_validate_normal_value(self, temp_ase_files):
