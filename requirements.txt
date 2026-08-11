@@ -1,0 +1,17 @@
+# Dependencias de runtime de Ecocardiograma Local.
+# Instalar: pip install -r requirements.txt
+# Nota: el PDF en Windows se genera con QPrinter (PyQt6), sin WeasyPrint.
+
+PyQt6>=6.11,<7
+pandas>=3.0,<4
+openpyxl>=3.1,<4
+Jinja2>=3.1,<4
+PyYAML>=6.0,<7
+requests>=2.34,<3
+pypdf>=6.15,<7
+pillow>=12.3,<13
+pytesseract>=0.3,<1
+
+# Dependencias de desarrollo (tests):
+# pytest
+# pytest-qt
