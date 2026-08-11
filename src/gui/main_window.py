@@ -11,6 +11,7 @@ from PyQt6.QtWidgets import (
     QFileDialog, QMessageBox, QFrame,
 )
 from PyQt6.QtGui import QAction
+from PyQt6.QtCore import QThread, pyqtSignal
 
 from src.models.patient import Patient, Sexo
 from src.models.colombian_reference import load_colombian_references, GUIDE_NAME
@@ -22,12 +23,35 @@ from src.core.validator import Validator
 from src.core.visual_input import VisualInputHandler
 from src.core.report_engine import ReportEngine
 from src.core.secure_delete import SecureDeleter
+from src.core.recommendations import get_rule_based_recommendations
+from src.core.updater import check_for_updates
 from src.gui.numeric_tab import NumericTab
 from src.gui.visual_tab import VisualTab
 from src.gui.report_preview import ReportPreview
 from src.gui.ai_tab import AITab
+from src.core.version import APP_NAME, APP_VERSION
 
 logger = setup_logger()
+
+
+class UpdateCheckWorker(QThread):
+    """Consulta GitHub Releases en un hilo para no congelar la UI."""
+
+    finished_check = pyqtSignal(dict)
+
+    def __init__(self, repo: str, current_version: str, timeout: float = 8.0):
+        super().__init__()
+        self.repo = repo
+        self.current_version = current_version
+        self.timeout = timeout
+
+    def run(self):
+        resultado = check_for_updates(
+            current_version=self.current_version,
+            repo=self.repo,
+            timeout=self.timeout,
+        )
+        self.finished_check.emit(resultado)
 
 
 def get_guide_name(guide: str) -> str:
@@ -82,6 +106,10 @@ class MainWindow(QMainWindow):
         self._connect_signals()
         self._cleanup_stale_session()
 
+        # Chequeo silencioso de actualizaciones al arrancar (si esta habilitado)
+        if self.config.update.enabled and self.config.update.repo:
+            self._start_update_check(manual=False)
+
     def _cleanup_stale_session(self):
         """Elimina temporales de una sesion anterior que quedo sin limpiar (crash)."""
         if not self.config.secure_erase:
@@ -98,7 +126,7 @@ class MainWindow(QMainWindow):
             logger.info(f"Temporales de sesion anterior limpiados al iniciar: {total}")
 
     def _build_ui(self):
-        self.setWindowTitle("Ecocardiograma Local - Informes Offline")
+        self.setWindowTitle(f"{APP_NAME} - Informes Offline v{APP_VERSION}")
         self.setMinimumSize(1100, 750)
 
         # Menu bar
@@ -127,6 +155,13 @@ class MainWindow(QMainWindow):
 
         # Menu Ayuda
         menu_ayuda = menubar.addMenu("Ayuda")
+
+        act_actualizar = QAction("Buscar Actualizaciones...", self)
+        act_actualizar.triggered.connect(self._on_check_updates)
+        menu_ayuda.addAction(act_actualizar)
+
+        menu_ayuda.addSeparator()
+
         act_acerca = QAction("Acerca de", self)
         act_acerca.triggered.connect(self._show_about)
         menu_ayuda.addAction(act_acerca)
@@ -150,6 +185,10 @@ class MainWindow(QMainWindow):
             "color: white; font-size: 16pt; font-weight: bold;"
         )
         header_layout.addWidget(title_lbl)
+
+        ver_lbl = QLabel(f"v{APP_VERSION}")
+        ver_lbl.setStyleSheet("color: #aed6f1; font-size: 9pt;")
+        header_layout.addWidget(ver_lbl)
 
         header_layout.addStretch()
 
@@ -233,11 +272,41 @@ class MainWindow(QMainWindow):
         logger.info("Sexo del paciente actualizado")
 
     def _on_data_changed(self):
-        """Maneja cambios en los datos (invalida la vista previa)."""
+        """Maneja cambios en los datos (invalida la vista previa y recalcula en vivo)."""
         self.statusBar().showMessage(
             "Datos modificados. Valide antes de generar el informe."
         )
         self.report_tab.clear()
+        self._recalcular_vivo()
+
+    def _recalcular_vivo(self):
+        """
+        Recalcula la validacion y las sugerencias por reglas al editar datos,
+        sin generar informe. Usa un Patient temporal para no alterar el actual.
+        """
+        scratch = Patient()
+        scratch.sexo = (
+            Sexo.MASCULINO if self.combo_sexo.currentIndex() == 0 else Sexo.FEMENINO
+        )
+        self.numeric_tab.apply_to_patient(scratch)
+        self.visual_tab.apply_to_patient(scratch)
+
+        tabla = self.validator.get_validation_table(scratch)
+        self.numeric_tab.highlight_validation(
+            {fila["parametro"]: {"normal": fila["normal"]} for fila in tabla}
+        )
+
+        n_anormales = sum(1 for fila in tabla if fila["normal"] is False)
+        if n_anormales:
+            recs = get_rule_based_recommendations(tabla)
+            texto = f"{n_anormales} valor(es) fuera de rango"
+            if recs:
+                texto += f" - {len(recs)} sugerencia(s) de seguimiento"
+            self.numeric_tab.set_live_status(texto, warn=True)
+        else:
+            self.numeric_tab.set_live_status(
+                "Todos los valores dentro de rango normal", warn=False
+            )
 
     def _on_validate(self):
         """Valida los datos actuales contra los rangos ASE."""
@@ -340,6 +409,16 @@ class MainWindow(QMainWindow):
         conf = getattr(result, "confidence", None)
         self.patient.ia_confidence = conf if isinstance(conf, (int, float)) else None
 
+        # Campos numericos que quedaron sin extraer
+        from src.models.param_registry import NUMERIC_FIELDS
+
+        presentes = {
+            f["validation_label"]
+            for f in NUMERIC_FIELDS
+            if getattr(self.patient, f["key"], None) is not None
+        }
+        faltantes = len(NUMERIC_FIELDS) - len(presentes)
+
         # Reflejar en las pestanas
         self.numeric_tab._on_clear()
         self.numeric_tab.populate_from_patient(self.patient)
@@ -347,9 +426,12 @@ class MainWindow(QMainWindow):
         self.report_tab.clear()
 
         self.statusBar().setStyleSheet("font-size: 10pt; color: #1a5276; font-weight: bold;")
+        aviso_faltantes = (
+            f" Faltan {faltantes} campos." if faltantes else " Todos los campos registrados."
+        )
         self.statusBar().showMessage(
             f"Extraccion aplicada: {len(result.numeric_params)} parametros "
-            f"({result.source}). Revise y valide los datos.", 10000
+            f"({result.source}).{aviso_faltantes} Revise y valide los datos.", 10000
         )
         self.tabs.setCurrentIndex(0)  # Ir a datos numericos (0 num, 1 visual, 2 IA, 3 informe)
         logger.info("Extraccion aplicada al informe")
@@ -487,12 +569,61 @@ class MainWindow(QMainWindow):
             "<li>Borrado seguro de datos temporales</li>"
             "</ul>"
             "<p><b>Guia activa:</b> " + get_guide_name(self.config.guide) + "</p>"
+            f"<p><b>Version:</b> {APP_VERSION}</p>"
         )
+
+    def _on_check_updates(self):
+        """Busca actualizaciones a pedido del usuario (menu Ayuda)."""
+        if not self.config.update.enabled or not self.config.update.repo:
+            QMessageBox.information(
+                self, "Actualizaciones",
+                "La verificacion de actualizaciones esta deshabilitada.\n"
+                "Configure 'update.repo' en configs/config.yaml para activarla."
+            )
+            return
+        self._start_update_check(manual=True)
+
+    def _start_update_check(self, manual: bool):
+        """Lanza la consulta de actualizaciones en un hilo (silenciosa o manual)."""
+        worker = UpdateCheckWorker(self.config.update.repo, APP_VERSION)
+        worker.finished_check.connect(
+            lambda resultado, m=manual: self._on_update_result(resultado, m)
+        )
+        self.statusBar().showMessage("Buscando actualizaciones...")
+        self._update_worker = worker
+        worker.start()
+
+    def _on_update_result(self, resultado: dict, manual: bool):
+        if resultado.get("error"):
+            if manual:
+                QMessageBox.warning(self, "Actualizaciones", resultado["error"])
+            self.statusBar().showMessage("No se pudo verificar actualizaciones.", 5000)
+            return
+        if resultado["disponible"]:
+            QMessageBox.information(
+                self, "Actualizacion disponible",
+                f"Hay una version nueva: v{resultado['version_remota']}\n"
+                f"Version instalada: v{APP_VERSION}\n\n"
+                "Descarguela desde las releases del proyecto e instale sobre esta version."
+            )
+            self.statusBar().showMessage(
+                f"Actualizacion v{resultado['version_remota']} disponible", 10000
+            )
+        elif manual:
+            QMessageBox.information(
+                self, "Actualizaciones",
+                f"Ya tiene la version mas reciente (v{APP_VERSION})."
+            )
+            self.statusBar().showMessage("Sin actualizaciones disponibles.", 5000)
 
     def closeEvent(self, event):
         """Maneja el cierre de la ventana: detiene hilos y limpia datos temporales."""
         # Esperar a que terminen los hilos de extraccion/lectura de la pestana IA
         self.ai_tab.shutdown()
+        # Esperar al hilo de verificacion de actualizaciones si sigue corriendo
+        worker = getattr(self, "_update_worker", None)
+        if worker is not None and worker.isRunning():
+            worker.wait(2000)
         # Limpiar sesion al cerrar
         self.secure_deleter.clean_session()
         logger.info("Aplicacion cerrada. Sesion limpiada.")

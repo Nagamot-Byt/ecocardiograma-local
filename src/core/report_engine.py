@@ -16,6 +16,8 @@ from src.core.validator import Validator
 from src.core.visual_input import VisualInputHandler
 from src.core.recommendations import get_rule_based_recommendations
 from src.models.colombian_reference import psap_upper_limit
+from src.models.param_registry import NUMERIC_FIELDS
+from src.core.version import APP_NAME, APP_VERSION
 from src.utils.logger import setup_logger
 from src.utils.helpers import format_number, safe_filename
 
@@ -172,6 +174,12 @@ class ReportEngine:
             k: format_number(v) for k, v in numeric_data.items()
         }
 
+        # Campos no extraidos/registrados (transparencia sobre vacios del informe)
+        campos_faltantes = [
+            f["validation_label"] for f in NUMERIC_FIELDS
+            if f["validation_label"] not in numeric_data
+        ]
+
         # Hallazgos visuales
         visual_data = patient.get_visual_fields()
         visual_summary = visual_handler.get_summary(patient)
@@ -209,6 +217,8 @@ class ReportEngine:
             "datos_numericos": numeric_data,
             "datos_formateados": numeric_formatted,
             "tabla_validacion": validation_rows,
+            "campos_faltantes": campos_faltantes,
+            "total_campos": len(NUMERIC_FIELDS),
             # Hallazgos visuales
             "datos_visuales": visual_data,
             "resumen_visual": visual_summary,
@@ -224,6 +234,8 @@ class ReportEngine:
             "ia_model": patient.ia_model or "",
             "ia_source": patient.ia_source or "",
             "ia_confidence": ia_confidence_pct,
+            "app_name": APP_NAME,
+            "app_version": APP_VERSION,
             # Funciones helper
             "format_number": format_number,
         }

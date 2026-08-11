@@ -31,3 +31,9 @@ ai:
   auto_start: true
   # Descarga el modelo la primera vez que se usa y no esta disponible
   pull_model: true
+
+# Verificador de actualizaciones contra GitHub Releases.
+# Dejar repo vacio (o enabled: false) para deshabilitar el chequeo.
+update:
+  enabled: false
+  repo: ""

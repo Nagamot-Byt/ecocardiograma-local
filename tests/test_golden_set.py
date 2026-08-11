@@ -72,7 +72,7 @@ class TestGoldenSet:
         """Regresion: el sinonimo 'vel'->'velocidad' permite cubrir G005."""
         caso = next(c for c in _cargar_casos() if c["id"] == "G005")
         _, _, recs, _ = self._validar_caso(caso)
-        assert any("Velocidad de insuficiencia aortica" in r for r in recs)
+        assert any("Velocidad de insuficiencia aórtica" in r for r in recs)
 
     def test_ajuste_por_altitud_en_psap(self):
         """G008 (nivel del mar) marca PSAP anormal; G009 (2640 msnm) no."""

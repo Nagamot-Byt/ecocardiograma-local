@@ -91,7 +91,24 @@ class NumericTab(QWidget):
         form_layout.addLayout(col_left)
         form_layout.addLayout(col_right)
         layout.addWidget(form_widget)
+
+        # Estado en vivo de la validacion (se actualiza al editar cada campo)
+        self.live_status = QLabel("")
+        self.live_status.setStyleSheet("font-size: 10pt; color: #555;")
+        layout.addWidget(self.live_status)
         layout.addStretch()
+
+    def set_live_status(self, text: str, warn: bool = False):
+        """Muestra el resumen en vivo de la validacion y sugerencias."""
+        if warn:
+            self.live_status.setStyleSheet(
+                "font-size: 10pt; color: #c0392b; font-weight: bold;"
+            )
+        else:
+            self.live_status.setStyleSheet(
+                "font-size: 10pt; color: #27ae60; font-weight: bold;"
+            )
+        self.live_status.setText(text)
 
     def _on_value_changed(self, attr: str):
         self.data_changed.emit()

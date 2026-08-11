@@ -22,6 +22,13 @@ class AIConfig:
 
 
 @dataclass
+class UpdateConfig:
+    """Configuracion del verificador de actualizaciones (GitHub Releases)."""
+    enabled: bool = False  # Con repo vacio o deshabilitado, el chequeo no se hace
+    repo: str = ""         # "usuario/repositorio" en GitHub
+
+
+@dataclass
 class Config:
     """Estructura de configuracion centralizada."""
     base_dir: str = "./data"
@@ -37,6 +44,7 @@ class Config:
     altitude_masl: float = 2640.0  # Altitud de la ciudad (ajusta PSAP en guia colombiana)
     max_file_mb: int = 20  # Limite de tamano de archivos a cargar (PDF/TXT/imagen)
     ai: AIConfig = field(default_factory=AIConfig)
+    update: UpdateConfig = field(default_factory=UpdateConfig)
 
 
 def _get_project_root() -> str:
@@ -76,6 +84,15 @@ def _build_ai_config(data: dict) -> AIConfig:
     return ai
 
 
+def _build_update_config(data: dict) -> UpdateConfig:
+    """Construye UpdateConfig desde un diccionario (con valores por defecto)."""
+    upd = UpdateConfig()
+    upd_data = data.get("update", {}) or {}
+    upd.enabled = bool(upd_data.get("enabled", upd.enabled))
+    upd.repo = str(upd_data.get("repo", upd.repo)).strip()
+    return upd
+
+
 def load_config(config_path: str = None) -> Config:
     """
     Carga la configuracion desde config.yaml.
@@ -112,6 +129,7 @@ def load_config(config_path: str = None) -> Config:
             except (ValueError, TypeError):
                 pass  # Mantener el valor por defecto
             cfg.ai = _build_ai_config(data)
+            cfg.update = _build_update_config(data)
         except Exception:
             pass  # Usar valores por defecto
 
