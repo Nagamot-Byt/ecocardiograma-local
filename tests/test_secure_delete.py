@@ -27,6 +27,31 @@ class TestSecureDelete:
         removed = secure_delete_directory(str(dir_path))
         assert len(removed) == 2
 
+    def test_secure_delete_directory_con_filtro_extensiones(self, tmp_path):
+        dir_path = tmp_path / "temp_data"
+        dir_path.mkdir()
+        (dir_path / "report.pdf").write_text("data1")
+        (dir_path / "report.html").write_text("data2")
+        (dir_path / "nota.txt").write_text("data3")
+
+        removed = secure_delete_directory(str(dir_path), extensions=(".pdf", ".html"))
+        assert len(removed) == 2
+        assert (dir_path / "nota.txt").exists()
+        assert not (dir_path / "report.pdf").exists()
+
+    def test_secure_delete_directory_inexistente(self):
+        assert secure_delete_directory("/no/existe") == []
+
+    def test_secure_delete_directory_recursivo(self, tmp_path):
+        base = tmp_path / "base"
+        sub = base / "sub"
+        sub.mkdir(parents=True)
+        (sub / "a.txt").write_text("data")
+
+        removed = secure_delete_directory(str(base))
+        assert len(removed) >= 2  # a.txt + sub (directorio)
+        assert not sub.exists()
+
     def test_secure_delete_empty_directory(self, tmp_path):
         dir_path = tmp_path / "empty"
         dir_path.mkdir()

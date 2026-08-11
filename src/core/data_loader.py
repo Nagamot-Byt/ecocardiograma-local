@@ -51,10 +51,13 @@ class DataLoader:
             logger.error(f"Error cargando referencias ASE: {e}")
             return False
 
-    def load_patient_from_file(self, filepath: str, patient: Patient) -> bool:
+    def load_patient_from_file(
+        self, filepath: str, patient: Patient, row: int = 0
+    ) -> bool:
         """
         Carga datos numericos desde un archivo Excel o CSV del usuario.
         El archivo debe tener columnas con los nombres de los parametros.
+        ``row`` selecciona la fila a usar cuando el archivo tiene varias.
         Retorna True si la carga fue exitosa.
         """
         if not os.path.exists(filepath):
@@ -76,12 +79,18 @@ class DataLoader:
             df.columns = [str(c).strip() for c in df.columns]
 
             self.last_row_count = len(df)
-            self.last_loaded_row = 0
+            if not 0 <= row < self.last_row_count:
+                logger.warning(
+                    f"Fila {row} inexistente (el archivo tiene "
+                    f"{self.last_row_count} filas). Se usara la primera."
+                )
+                row = 0
+            self.last_loaded_row = row
 
             if self.last_row_count > 1:
                 logger.warning(
                     f"El archivo {os.path.basename(filepath)} tiene "
-                    f"{self.last_row_count} filas; se usara la primera. "
+                    f"{self.last_row_count} filas; se usa la fila {row + 1}. "
                     "Las demas filas se ignoran."
                 )
 
@@ -92,7 +101,7 @@ class DataLoader:
             for col_name, attr_name in mapeo.items():
                 if col_name in df.columns:
                     try:
-                        value = df[col_name].iloc[0] if len(df) > 0 else None
+                        value = df[col_name].iloc[row] if len(df) > 0 else None
                         if pd.notna(value):
                             if isinstance(value, str):
                                 value = value.replace(",", ".")
@@ -121,6 +130,23 @@ class DataLoader:
         return {
             r.parametro: r.unidad
             for r in rangos.values()
+        }
+
+    @staticmethod
+    def template_columns() -> Dict[str, float]:
+        """
+        Columnas canonicas para generar una plantilla .xlsx de ejemplo.
+        Retorna {nombre_columna: valor_de_ejemplo}.
+        """
+        return {
+            "DDI": 48.0, "DSI": 30.0, "PPVI": 9.0, "SIVI": 10.0,
+            "Masa VI": 150.0, "Masa VI Ind": 82.0,
+            "RVDI": 110.0, "RVSI": 40.0, "FEVI": 60.0,
+            "Diametro AI": 38.0, "Volumen AI": 28.0, "Diametro VD": 34.0,
+            "TAPSE": 22.0, "FSR": 45.0,
+            "Gradiente Media MI": 2.0, "Gradiente Max MI": 6.0, "Area MI": 4.0,
+            "Gradiente Media AO": 6.0, "Gradiente Max AO": 18.0, "Area AO": 3.0,
+            "Velocidad Insuf AO": 2.2, "PSAP": 28.0,
         }
 
     @staticmethod

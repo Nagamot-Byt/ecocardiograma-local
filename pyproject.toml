@@ -4,7 +4,7 @@ build-backend = "setuptools.backends._legacy:_Backend"
 
 [project]
 name = "ecocardiograma-local"
-version = "1.0.1"
+version = "1.0.2"
 description = "Aplicacion local offline para generacion de informes ecocardiograficos validados con guias colombianas SCC/LATAM, con lectura automatizada por IA local."
 readme = "README.md"
 license = {text = "MIT"}
@@ -55,6 +55,16 @@ include = ["src*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["src/main.py"]
+
+[tool.coverage.report]
+# Umbral minimo de cobertura. Sube conforme se cubran rutas de la GUI.
+# Medir con: pytest --cov=src --cov-report=term-missing
+fail_under = 75
+skip_covered = false
 
 [tool.ruff]
 line-length = 100

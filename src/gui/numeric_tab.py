@@ -5,7 +5,7 @@ Tabla editable donde se ingresan/cargan los valores del ecocardiograma.
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFormLayout,
     QLabel, QPushButton, QFileDialog,
-    QMessageBox,
+    QMessageBox, QInputDialog,
     QDoubleSpinBox,
 )
 from PyQt6.QtCore import pyqtSignal
@@ -28,6 +28,7 @@ class NumericTab(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.spinbox_map: Dict[str, QDoubleSpinBox] = {}
+        self._last_row_count = 0
         self._build_ui()
 
     def _build_ui(self):
@@ -42,6 +43,13 @@ class NumericTab(QWidget):
         self.btn_limpiar = QPushButton("Limpiar Datos")
         self.btn_limpiar.clicked.connect(self._on_clear)
         toolbar.addWidget(self.btn_limpiar)
+
+        self.btn_plantilla = QPushButton("Plantilla .xlsx")
+        self.btn_plantilla.setToolTip(
+            "Descarga una plantilla de ejemplo con las columnas esperadas."
+        )
+        self.btn_plantilla.clicked.connect(self._on_download_template)
+        toolbar.addWidget(self.btn_plantilla)
 
         self.btn_datos_prueba = QPushButton("Datos de Prueba")
         self.btn_datos_prueba.clicked.connect(self._on_test_data)
@@ -105,6 +113,40 @@ class NumericTab(QWidget):
                 dest = filepath
             self.load_from_file(dest)
 
+    def _on_download_template(self):
+        """Genera y guarda una plantilla .xlsx con las columnas esperadas."""
+        from src.core.data_loader import DataLoader
+
+        filepath, _ = QFileDialog.getSaveFileName(
+            self, "Guardar Plantilla", "plantilla_ecocardiograma.xlsx",
+            "Archivo Excel (*.xlsx)"
+        )
+        if not filepath:
+            return
+        try:
+            import openpyxl
+
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Datos"
+            columnas = DataLoader.template_columns()
+            for col, nombre in enumerate(columnas, start=1):
+                ws.cell(row=1, column=col, value=nombre)
+                ws.cell(row=2, column=col, value=columnas[nombre])
+            wb.save(filepath)
+            QMessageBox.information(
+                self, "Plantilla generada",
+                "Plantilla guardada correctamente.\n"
+                "Complete la primera fila con los valores del paciente y "
+                "cargue el archivo en la aplicacion.\n\n"
+                "Puede agregar mas filas: al cargar, la aplicacion le "
+                "permitira elegir cual usar.",
+            )
+        except Exception as e:
+            QMessageBox.critical(
+                self, "Error", f"No se pudo generar la plantilla:\n{e}"
+            )
+
     def _on_clear(self):
         for attr, spin in self.spinbox_map.items():
             spin.setValue(spin.minimum())
@@ -130,26 +172,41 @@ class NumericTab(QWidget):
                 spin.setValue(val)
         self.data_changed.emit()
 
-    def load_from_file(self, filepath: str) -> bool:
-        """Carga datos desde un archivo Excel/CSV usando el DataLoader."""
+    def load_from_file(self, filepath: str, row: int = 0) -> bool:
+        """Carga datos desde un archivo Excel/CSV usando el DataLoader.
+
+        Si el archivo tiene varias filas, permite elegir cual usar (salvo
+        que se indique ``row`` explicitamente).
+        """
         from src.core.data_loader import DataLoader
         from src.utils.config import load_config
 
         cfg = load_config()
         loader = DataLoader(cfg.hombres_file, cfg.mujeres_file)
         patient = Patient()
-        success = loader.load_patient_from_file(filepath, patient)
+        success = loader.load_patient_from_file(filepath, patient, row=row)
+        self._last_row_count = loader.last_row_count
 
         if success:
             self.populate_from_patient(patient)
-            if loader.last_row_count > 1:
-                QMessageBox.information(
-                    self, "Multiples filas",
-                    f"El archivo tiene {loader.last_row_count} filas.\n"
-                    "Solo se cargaron los datos de la primera fila; "
-                    "las demas fueron ignoradas."
-                )
+            if row == 0 and self._last_row_count > 1:
+                self._ask_row_selection(filepath)
         return success
+
+    def _ask_row_selection(self, filepath: str):
+        """Si el archivo tiene varias filas, pregunta cual cargar."""
+        items = [f"Fila {i + 1}" for i in range(self._last_row_count)]
+        choice, ok = QInputDialog.getItem(
+            self, "Multiples filas",
+            f"El archivo tiene {self._last_row_count} filas.\n"
+            "Seleccione la fila que desea cargar:",
+            items, 0, False,
+        )
+        if not ok:
+            return
+        idx = items.index(choice)
+        if idx != 0:
+            self.load_from_file(filepath, row=idx)
 
     def populate_from_patient(self, patient: Patient):
         """Llena los spinbox con los datos de un objeto Patient."""

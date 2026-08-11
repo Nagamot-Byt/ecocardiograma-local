@@ -32,5 +32,5 @@ jobs:
       - name: Lint (ruff)
         run: ruff check src tests
 
-      - name: Tests
-        run: xvfb-run -a pytest -q
+      - name: Tests con cobertura (umbral en pyproject.toml)
+        run: xvfb-run -a pytest --cov=src --cov-report=term-missing
