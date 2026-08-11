@@ -219,6 +219,17 @@
     </div>
     {% endif %}
 
+    <!-- Campos no reportados (transparencia de la extraccion) -->
+    {% if campos_faltantes %}
+    <div class="observaciones">
+        <strong>Campos no reportados ({{ campos_faltantes|length }} de {{ total_campos }}):</strong>
+        {{ campos_faltantes|join(', ') }}
+        <p style="font-size: 9pt; color: #777; margin-top: 4px;">
+            Estos parametros no fueron extraidos ni ingresados. Verifique si debe completarlos.
+        </p>
+    </div>
+    {% endif %}
+
     <!-- Hallazgos visuales -->
     {% if datos_visuales %}
     <div class="section">
@@ -301,7 +312,7 @@
     </div>
 
     <div class="footer">
-        <p>Informe generado automaticamente &mdash; {{ guia_nombre }}</p>
+        <p>Informe generado automaticamente con {{ app_name }} v{{ app_version }} &mdash; {{ guia_nombre }}</p>
         <p>Este informe es de apoyo diagnostico. La interpretacion clinica corresponde al medico tratante.</p>
     </div>
 

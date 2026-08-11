@@ -1,0 +1,13 @@
+{
+  "id": "E002",
+  "nombre": "Disfuncion sistolica severa sintetica",
+  "texto": "ECOCARDIOGRAMA - PACIENTE CON CARDIOPATIA\n\nDDI: 6.4 cm\nDSI: 5.0 cm\nFEVI: 30 %\nTAPSE: 15 mm\nFSR: 27 %\nPSAP: 42 mmHg\n",
+  "esperado": {
+    "ddi": 64,
+    "dsi": 50,
+    "fevi": 30,
+    "tad": 15,
+    "fsr": 27,
+    "psap": 42
+  }
+}

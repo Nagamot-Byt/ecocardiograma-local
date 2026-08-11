@@ -1,0 +1,25 @@
+{
+  "id": "E001",
+  "nombre": "Informe normal sintetico (una medicion por linea)",
+  "texto": "ECOCARDIOGRAMA TRANSTORACICO\n\nDDI: 4.8 cm\nDSI: 3.0 cm\nPPVI: 0.9 cm\nSIVI: 1.0 cm\nFEVI: 62 %\nDiametro AI: 34 mm\nVolumen AI indexado: 25 ml/m2\nDiametro VD: 32 mm\nTAPSE: 22 mm\nFSR: 38 %\nGradiente medio mitral: 3 mmHg\nGradiente maximo mitral: 6 mmHg\nArea mitral: 5 cm2\nGradiente medio aortico: 8 mmHg\nGradiente maximo aortico: 14 mmHg\nArea aortica: 3.2 cm2\nVelocidad insuficiencia aortica: 1.8 m/s\nPSAP: 28 mmHg\n",
+  "esperado": {
+    "ddi": 48,
+    "dsi": 30,
+    "ppvi": 9,
+    "sivi": 10,
+    "fevi": 62,
+    "diametro_ai": 34,
+    "volumen_ai": 25,
+    "diametro_vd": 32,
+    "tad": 22,
+    "fsr": 38,
+    "gradiente_media_mi": 3,
+    "gradiente_max_mi": 6,
+    "area_mi": 5,
+    "gradiente_media_ao": 8,
+    "gradiente_max_ao": 14,
+    "area_ao": 3.2,
+    "velocidad_insuf_ao": 1.8,
+    "psap": 28
+  }
+}

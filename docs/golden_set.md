@@ -50,11 +50,10 @@ ciudad.
    depende del sinónimo `"vel": "velocidad"` en `src/core/recommendations.py`; el
    test `test_regla_velocidad_insuficiencia_aortica_se_dispara` lo fija como
    regresión.
-2. **Pendiente de pulido:** los textos de recomendaciones se muestran **sin
-   tildes** en el PDF (p. ej. "disfuncion" en lugar de "disfunción"), porque el
-   módulo se escribió normalizando sin acentos. Conviene corregir los mensajes
-   con acentos correctos y conservar solo la normalización interna para el
-   emparejamiento. Candidato para v1.0.3.
+2. **Tildes correctas (v1.0.3):** los textos de recomendaciones se muestran con
+   acentos correctos en el PDF (p. ej. "disfunción", "ventrículo"). La
+   normalización sin acentos se conserva únicamente para el emparejamiento de
+   tokens en `_tokens()`. El golden set fija los textos esperados acentuados.
 3. **Rangos avalables:** ver `docs/validacion_clinica.md` para la revisión por
    cardiólogo de los límites y textos.
 

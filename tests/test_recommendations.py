@@ -21,12 +21,12 @@ class TestRuleBasedRecommendations:
     def test_psap_alto_sugiere_hipertension_pulmonar(self):
         filas = [_fila("PSAP (mmHg)", 48.0, ls=38.0)]
         recs = get_rule_based_recommendations(filas)
-        assert any("hipertension pulmonar" in r for r in recs)
+        assert any("hipertensión pulmonar" in r for r in recs)
 
     def test_area_ao_baja_sugiere_estenosis_aortica(self):
         filas = [_fila("Area AO (cm2)", 1.2, li=2.5)]
         recs = get_rule_based_recommendations(filas)
-        assert any("estenosis aortica" in r for r in recs)
+        assert any("estenosis aórtica" in r for r in recs)
 
     def test_gradiente_mitral_alto_sugiere_estenosis_mitral(self):
         filas = [_fila("Grad. medio MI (mmHg)", 14.0, ls=5.0)]

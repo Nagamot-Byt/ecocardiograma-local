@@ -1,0 +1,12 @@
+{
+  "id": "E003",
+  "nombre": "Texto libre en una sola linea",
+  "texto": "Informe: FEVI 55 %, DDI 4.6 cm, DSI 3.2 cm, area aortica 3.4 cm2, PSAP 31 mmHg.",
+  "esperado": {
+    "fevi": 55,
+    "ddi": 46,
+    "dsi": 32,
+    "area_ao": 3.4,
+    "psap": 31
+  }
+}

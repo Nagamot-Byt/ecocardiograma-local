@@ -21,6 +21,10 @@ def config_file(tmp_path):
             "model": "llama3.2:3b",
             "timeout": "abc",  # invalido -> debe conservar el default
         },
+        "update": {
+            "enabled": True,
+            "repo": "usuario/ecocardiograma_local",
+        },
     }
     path = tmp_path / "config.yaml"
     with open(path, "w", encoding="utf-8") as f:
@@ -64,6 +68,16 @@ class TestConfig:
         assert cfg.ai.model == "llama3.2:3b"
         # timeout invalido -> default
         assert cfg.ai.timeout == AIConfig.timeout
+
+    def test_update_defaults_deshabilitado(self):
+        cfg = load_config("/no/existe/config.yaml")
+        assert cfg.update.enabled is False
+        assert cfg.update.repo == ""
+
+    def test_update_se_carga_desde_yaml(self, config_file):
+        cfg = load_config(config_file)
+        assert cfg.update.enabled is True
+        assert cfg.update.repo == "usuario/ecocardiograma_local"
 
     def test_guia_invalida_se_normaliza(self, tmp_path):
         path = tmp_path / "config.yaml"

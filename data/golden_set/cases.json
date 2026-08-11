@@ -38,11 +38,11 @@
       "esperado": {
         "anormales": ["DDI (mm)", "DSI (mm)", "RVDI (ml)", "RVSI (ml)", "FEVI (%)"],
         "recomendaciones": [
-          "Diametro diastolico elevado: valorar dilatacion del ventriculo izquierdo.",
-          "Diametro sistolico elevado: valorar dilatacion o disfuncion del ventriculo izquierdo.",
-          "Volumen diastolico elevado: valorar dilatacion del ventriculo izquierdo.",
-          "Volumen sistolico elevado: valorar dilatacion o disfuncion del ventriculo izquierdo.",
-          "FEVI reducida: valorar disfuncion sistolica del ventriculo izquierdo y seguimiento ecocardiografico."
+          "Diámetro diastólico elevado: valorar dilatación del ventrículo izquierdo.",
+          "Diámetro sistólico elevado: valorar dilatación o disfunción del ventrículo izquierdo.",
+          "Volumen diastólico elevado: valorar dilatación del ventrículo izquierdo.",
+          "Volumen sistólico elevado: valorar dilatación o disfunción del ventrículo izquierdo.",
+          "FEVI reducida: valorar disfunción sistólica del ventrículo izquierdo y seguimiento ecocardiográfico."
         ]
       }
     },
@@ -65,7 +65,7 @@
           "Grosor de pared posterior elevado: valorar hipertrofia ventricular izquierda.",
           "Septum interventricular engrosado: valorar hipertrofia ventricular izquierda.",
           "Masa ventricular elevada: valorar hipertrofia ventricular izquierda.",
-          "Indice de masa ventricular elevado: valorar hipertrofia ventricular izquierda."
+          "Índice de masa ventricular elevado: valorar hipertrofia ventricular izquierda."
         ]
       }
     },
@@ -85,12 +85,12 @@
       "esperado": {
         "anormales": ["Grad. medio MI (mmHg)", "Grad. max MI (mmHg)", "Area MI (cm2)", "Diametro AI (mm)", "Volumen AI ind. (ml/m2)", "PSAP (mmHg)"],
         "recomendaciones": [
-          "Auricula izquierda dilatada: valorar presiones de llenado y fibrilacion auricular.",
-          "Volumen auricular elevado: valorar dilatacion de la auricula izquierda.",
+          "Aurícula izquierda dilatada: valorar presiones de llenado y fibrilación auricular.",
+          "Volumen auricular elevado: valorar dilatación de la aurícula izquierda.",
           "Gradiente medio mitral elevado: valorar estenosis mitral.",
-          "Gradiente maximo mitral elevado: valorar estenosis mitral.",
-          "Area mitral reducida: valorar estenosis mitral.",
-          "PSAP elevado: valorar hipertension pulmonar (ajustado por altitud)."
+          "Gradiente máximo mitral elevado: valorar estenosis mitral.",
+          "Área mitral reducida: valorar estenosis mitral.",
+          "PSAP elevado: valorar hipertensión pulmonar (ajustado por altitud)."
         ]
       }
     },
@@ -110,10 +110,10 @@
       "esperado": {
         "anormales": ["Grad. medio AO (mmHg)", "Grad. max AO (mmHg)", "Area AO (cm2)", "Vel. insuf. AO (m/s)"],
         "recomendaciones": [
-          "Gradiente medio aortico elevado: valorar estenosis aortica.",
-          "Gradiente maximo aortico elevado: valorar estenosis aortica.",
-          "Area aortica reducida: valorar estenosis aortica.",
-          "Velocidad de insuficiencia aortica elevada: valorar el grado de regurgitacion."
+          "Gradiente medio aórtico elevado: valorar estenosis aórtica.",
+          "Gradiente máximo aórtico elevado: valorar estenosis aórtica.",
+          "Área aórtica reducida: valorar estenosis aórtica.",
+          "Velocidad de insuficiencia aórtica elevada: valorar el grado de regurgitación."
         ]
       }
     },
@@ -133,9 +133,9 @@
       "esperado": {
         "anormales": ["Diametro AI (mm)", "Volumen AI ind. (ml/m2)", "Diametro VD (mm)"],
         "recomendaciones": [
-          "Auricula izquierda dilatada: valorar presiones de llenado y fibrilacion auricular.",
-          "Volumen auricular elevado: valorar dilatacion de la auricula izquierda.",
-          "Ventriculo derecho dilatado: valorar patologia del ventriculo derecho."
+          "Aurícula izquierda dilatada: valorar presiones de llenado y fibrilación auricular.",
+          "Volumen auricular elevado: valorar dilatación de la aurícula izquierda.",
+          "Ventrículo derecho dilatado: valorar patología del ventrículo derecho."
         ]
       }
     },
@@ -155,8 +155,8 @@
       "esperado": {
         "anormales": ["TAPSE (mm)", "FSR (%)"],
         "recomendaciones": [
-          "TAPSE reducido: valorar funcion del ventriculo derecho.",
-          "FSR reducido: valorar funcion sistolica del ventriculo derecho."
+          "TAPSE reducido: valorar función del ventrículo derecho.",
+          "FSR reducido: valorar función sistólica del ventrículo derecho."
         ]
       }
     },
@@ -176,7 +176,7 @@
       "esperado": {
         "anormales": ["PSAP (mmHg)"],
         "recomendaciones": [
-          "PSAP elevado: valorar hipertension pulmonar (ajustado por altitud)."
+          "PSAP elevado: valorar hipertensión pulmonar (ajustado por altitud)."
         ]
       }
     },
