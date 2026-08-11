@@ -9,7 +9,7 @@
 ; primera vez que se usa.
 
 #define MyAppName "Ecocardiograma Local"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.0.1"
 #define MyAppExeName "EcocardiogramaLocal.exe"
 #define MyAppPublisher "YAMID"
 #define MyAppExeDir "..\dist\EcocardiogramaLocal"

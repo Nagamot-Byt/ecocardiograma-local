@@ -1,7 +1,9 @@
 # -*- mode: python ; coding: utf-8 -*-
 # PyInstaller spec para Ecocardiograma Local.
-# Modo one-dir: los PDFs/HTML generados se guardan en data/output dentro
-# del propio dist, que es persistente (a diferencia de one-file).
+# Modo one-dir. Los archivos de lectura (configs, templates, referencias ASE)
+# van dentro del dist; los datos de escritura (logs, user_input, output)
+# se guardan en %LOCALAPPDATA%\EcocardiogramaLocal en modo congelado,
+# de modo que la instalacion se mantiene de solo lectura.
 
 a = Analysis(
     ['src/main.py'],
