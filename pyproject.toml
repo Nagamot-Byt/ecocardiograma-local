@@ -1,0 +1,69 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "ecocardiograma-local"
+version = "1.0.0"
+description = "Aplicacion local offline para generacion de informes ecocardiograficos validados con guias colombianas SCC/LATAM, con lectura automatizada por IA local."
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.11"
+authors = [
+    {name = "Ecocardiograma Local Team"}
+]
+keywords = ["ecocardiograma", "SCC", "LATAM", "colombia", "informe", "offline", "PyQt6", "IA local"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: X11 Applications :: Qt",
+    "Intended Audience :: Healthcare Industry",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+]
+
+dependencies = [
+    "pandas>=2.2",
+    "openpyxl>=3.1",
+    "PyQt6>=6.7",
+    "jinja2>=3.1",
+    "pyyaml>=6.0",
+    "requests>=2.31",
+    "pypdf>=4.0",
+    "pytesseract>=0.3.10",
+    "pillow>=10.0",
+]
+
+[project.optional-dependencies]
+# WeasyPrint solo se usa en Linux/Mac (requiere GTK). En Windows el PDF
+# se genera con QPrinter (PyQt6), que no requiere dependencias extra.
+pdf = [
+    "weasyprint>=61.0",
+]
+dev = [
+    "pytest>=7.0",
+    "pytest-qt>=4.2",
+]
+
+[project.scripts]
+ecocardiograma = "src.main:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
+ignore = ["E402"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E501"]
+"src/main.py" = ["E402"]

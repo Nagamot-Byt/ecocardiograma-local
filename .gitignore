@@ -1,0 +1,58 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test / lint caches
+.pytest_cache/
+.ruff_cache/
+
+# Logs
+logs/
+*.log
+
+# Temporary patient data
+data/user_input/*
+!data/user_input/.gitkeep
+data/output/*
+!data/output/.gitkeep
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local

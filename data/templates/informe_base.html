@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Informe Ecocardiografico</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 20mm 15mm 20mm 15mm;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+            font-size: 11pt;
+            color: #1a1a1a;
+            line-height: 1.5;
+            background: #fff;
+        }
+        .header {
+            border-bottom: 3px solid #1a5276;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            font-size: 18pt;
+            color: #1a5276;
+            margin-bottom: 4px;
+        }
+        .header .subtitle {
+            font-size: 10pt;
+            color: #555;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            background: #f0f4f8;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-size: 10pt;
+        }
+        .info-grid .label {
+            font-weight: bold;
+            color: #1a5276;
+        }
+        .section {
+            margin-bottom: 18px;
+        }
+        .section h2 {
+            font-size: 13pt;
+            color: #1a5276;
+            border-bottom: 1px solid #bdc3c7;
+            padding-bottom: 4px;
+            margin-bottom: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 10px;
+            font-size: 10pt;
+        }
+        th {
+            background: #1a5276;
+            color: white;
+            text-align: left;
+            padding: 6px 8px;
+            font-weight: 600;
+        }
+        td {
+            padding: 5px 8px;
+            border-bottom: 1px solid #ecf0f1;
+        }
+        tr:nth-child(even) td {
+            background: #f9fafb;
+        }
+        .anormal {
+            background-color: #fdedec !important;
+            color: #c0392b;
+            font-weight: bold;
+        }
+        .normal-row {
+            background-color: #eafaf1 !important;
+        }
+        .alerta-box {
+            background: #fdedec;
+            border-left: 4px solid #c0392b;
+            padding: 10px 14px;
+            margin-bottom: 16px;
+            border-radius: 4px;
+            font-size: 10pt;
+        }
+        .alerta-box h3 {
+            color: #c0392b;
+            font-size: 11pt;
+            margin-bottom: 6px;
+        }
+        .alerta-box ul {
+            margin-left: 16px;
+        }
+        .visual-section {
+            background: #eaf2f8;
+            padding: 12px;
+            border-radius: 6px;
+        }
+        .visual-item {
+            display: inline-block;
+            margin-right: 20px;
+            margin-bottom: 6px;
+        }
+        .visual-item .vl { font-weight: bold; color: #1a5276; }
+        .observaciones {
+            background: #fef9e7;
+            padding: 10px;
+            border-radius: 6px;
+            border-left: 4px solid #f39c12;
+            margin-top: 10px;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 10px;
+            border-top: 2px solid #1a5276;
+            text-align: center;
+            font-size: 9pt;
+            color: #777;
+        }
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 9pt;
+            font-weight: bold;
+        }
+        .badge-ok { background: #27ae60; color: white; }
+        .badge-warn { background: #e74c3c; color: white; }
+        .badge-na { background: #95a5a6; color: white; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>INFORME ECOCARDIOGRAFICO</h1>
+        <div class="subtitle">Generado por Ecocardiograma Local &mdash; {{ fecha_generacion }} &mdash; {{ guia_nombre }}</div>
+    </div>
+
+    <div class="info-grid">
+        <div><span class="label">ID Paciente:</span> {{ paciente_id }}</div>
+        <div><span class="label">Sexo:</span> {{ 'Masculino' if paciente_sexo == 'M' else 'Femenino' }}</div>
+        <div><span class="label">Edad:</span> {{ paciente_edad }}</div>
+        <div><span class="label">Fecha de Estudio:</span> {{ fecha_estudio }}</div>
+        <div><span class="label">Medico:</span> {{ nombre_medico or 'No especificado' }}</div>
+    </div>
+
+    <!-- Valores fuera de rango -->
+    {% set has_alertas = [] %}
+    {% for a in resumen_validacion %}
+        {% if 'Bajo' in a or 'Elevado' in a %}
+            {% if has_alertas.append(a) %}{% endif %}
+        {% endif %}
+    {% endfor %}
+    {% if has_alertas %}
+    <div class="alerta-box">
+        <h3>Valores Fuera de Rango</h3>
+        <ul>
+        {% for a in has_alertas %}
+            <li>{{ a }}</li>
+        {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <!-- Tabla de resultados numericos -->
+    <div class="section">
+        <h2>Resultados Numericos</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Parametro</th>
+                    <th>Valor</th>
+                    <th>Rango Normal</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for row in tabla_validacion %}
+                <tr class="{{ 'anormal' if row.normal == false else ('normal-row' if row.normal == true else '') }}">
+                    <td>{{ row.parametro }}</td>
+                    <td>{{ format_number(row.valor) }} {{ row.unidad }}</td>
+                    <td>
+                        {% if row.limite_inf is not none and row.limite_sup is not none %}
+                            {{ row.limite_inf }} - {{ row.limite_sup }} {{ row.unidad }}
+                        {% elif row.limite_inf is not none %}
+                            &ge; {{ row.limite_inf }} {{ row.unidad }}
+                        {% elif row.limite_sup is not none %}
+                            &le; {{ row.limite_sup }} {{ row.unidad }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if row.normal == true %}
+                            <span class="badge badge-ok">Normal</span>
+                        {% elif row.normal == false %}
+                            <span class="badge badge-warn">Fuera de rango</span>
+                        {% else %}
+                            <span class="badge badge-na">Sin ref.</span>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Nota metodologica (PSAP por altitud) -->
+    {% if nota_altitud %}
+    <div class="observaciones">
+        <strong>Nota:</strong> {{ nota_altitud }}
+    </div>
+    {% endif %}
+
+    <!-- Hallazgos visuales -->
+    {% if datos_visuales %}
+    <div class="section">
+        <h2>Hallazgos Visuales</h2>
+        <div class="visual-section">
+            {% for nombre, valor in datos_visuales.items() %}
+                {% if valor and valor != "No" and valor != "Normal" %}
+                <div class="visual-item">
+                    <span class="vl">{{ nombre }}:</span> {{ valor }}
+                </div>
+                {% endif %}
+            {% endfor %}
+            {% set has_visual = namespace(found=false) %}
+            {% for nombre, valor in datos_visuales.items() %}
+                {% if valor and valor != "No" and valor != "Normal" %}
+                    {% set has_visual.found = true %}
+                {% endif %}
+            {% endfor %}
+            {% if not has_visual.found %}
+                <p>Sin hallazgos visuales significativos.</p>
+            {% endif %}
+        </div>
+        {% if observaciones %}
+        <div class="observaciones">
+            <strong>Observaciones:</strong> {{ observaciones }}
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Impresion clinica de la IA -->
+    {% if impresion_clinica %}
+    <div class="section">
+        <h2>Impresion Clinica</h2>
+        <div class="observaciones">
+            <p>{{ impresion_clinica }}</p>
+            {% if ia_model %}
+            <p style="font-size: 9pt; color: #777; margin-top: 8px;">
+                Extraccion asistida por IA: {{ ia_model }}{% if ia_confidence %} (confianza media {{ ia_confidence }}){% endif %}{% if ia_source %} &mdash; {{ ia_source }}{% endif %}
+            </p>
+            {% endif %}
+        </div>
+        {% if recomendaciones %}
+        <ul style="margin-left: 20px; margin-top: 8px;">
+            {% for r in recomendaciones %}
+            <li>{{ r }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Resumen de validacion -->
+    <div class="section">
+        <h2>Resumen</h2>
+        <ul style="margin-left: 20px;">
+        {% for item in resumen_validacion %}
+            <li>{{ item }}</li>
+        {% endfor %}
+        {% for item in resumen_visual %}
+            <li>{{ item }}</li>
+        {% endfor %}
+        </ul>
+    </div>
+
+    <div class="footer">
+        <p>Informe generado automaticamente &mdash; {{ guia_nombre }}</p>
+        <p>Este informe es de apoyo diagnostico. La interpretacion clinica corresponde al medico tratante.</p>
+    </div>
+
+</body>
+</html>

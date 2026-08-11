@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurar Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Instalar dependencias
+        run: |
+          pip install -r requirements-dev.txt
+
+      - name: Instalar runtime de Qt (pytest-qt necesita un display)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1 libgl1 libxkbcommon0 xvfb
+          sudo -n true 2>/dev/null || true
+
+      - name: Lint (ruff)
+        run: ruff check src tests
+
+      - name: Tests
+        run: xvfb-run -a pytest -q

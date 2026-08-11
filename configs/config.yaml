@@ -1,0 +1,33 @@
+# Configuracion de la aplicacion Ecocardiograma Local
+base_dir: ./data
+ase_path: ./data/ase_references
+report_template: ./data/templates/informe_base.html
+log_file: ./logs/app.log
+secure_erase: true
+user_input_dir: ./data/user_input
+output_dir: ./data/output
+hombres_file: ./data/ase_references/hombres.xlsx
+mujeres_file: ./data/ase_references/mujeres.xlsx
+
+# Guia de referencia: "colombian" (SCC/LATAM) o "ase"
+guide: colombian
+
+# Altitud de la ciudad en metros sobre el nivel del mar (ajusta el limite
+# superior de PSAP en la guia colombiana; Bogota ~2640 msnm)
+altitude_masl: 2640
+
+# Limite de tamano de archivos a cargar (PDF/TXT/imagen), en MB
+max_file_mb: 20
+
+# Motor de IA local (Ollama) - modelo < 7B recomendado: qwen2.5:3b o llama3.2:3b
+ai:
+  enabled: true
+  base_url: http://localhost:11434
+  model: qwen2.5:3b
+  timeout: 300
+  # Si use_ai es false, la extraccion se hace solo por reglas (regex), sin IA
+  use_ai: true
+  # Inicia Ollama automaticamente si el servidor no responde (si esta instalado)
+  auto_start: true
+  # Descarga el modelo la primera vez que se usa y no esta disponible
+  pull_model: true
