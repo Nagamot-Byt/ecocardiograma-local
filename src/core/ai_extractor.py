@@ -134,17 +134,53 @@ def _convert_to_spec_unit(value: float, detected: Optional[str], spec: Dict[str,
     return value
 
 
-def _match_value_for_alias(
-    alias: str, search_text: str, spec: Optional[Dict[str, Any]] = None
+# Patrones de alias precompilados, ordenados por longitud de alias (descendente).
+# Precompilar evita reconstruir/reescuchar la cadena en cada busqueda, lo que
+# acelera notablemente documentos largos (OCR con cientos de lineas).
+_PARAM_PATTERNS: Optional[List[Tuple[str, str, "re.Pattern"]]] = None
+
+
+def _param_patterns() -> List[Tuple[str, str, "re.Pattern"]]:
+    """Retorna (key, alias, patron_compilado) ordenados por largo de alias desc."""
+    global _PARAM_PATTERNS
+    if _PARAM_PATTERNS is None:
+        items = [
+            (key, alias, re.compile(_param_value_pattern(alias), re.IGNORECASE))
+            for key, spec in PARAM_SPECS.items()
+            for alias in spec["aliases"]
+        ]
+        items.sort(key=lambda t: len(t[1]), reverse=True)
+        _PARAM_PATTERNS = items
+    return _PARAM_PATTERNS
+
+
+def _match_compiled(
+    compiled: "re.Pattern", search_text: str, spec: Optional[Dict[str, Any]] = None
 ) -> Optional[float]:
-    """Busca el valor numerico de un alias en un texto (en la unidad del parametro)."""
-    m = re.search(_param_value_pattern(alias), search_text, re.IGNORECASE)
+    """Busca el valor numerico de un alias precompilado (en la unidad del parametro)."""
+    m = compiled.search(search_text)
     if not m:
         return None
     value = to_number(m.group(1))
     if value is None:
         return None
     return _convert_to_spec_unit(value, m.group(2), spec)
+
+
+# Fase C: patron por parametro precompilado (formato "Estado (valor > ref)").
+_FASE_C_PATTERNS: Dict[str, "re.Pattern"] = {}
+
+
+def _fase_c_pattern(key: str) -> "re.Pattern":
+    if key not in _FASE_C_PATTERNS:
+        spec = PARAM_SPECS[key]
+        alts = [a for a in spec["aliases"] if len(a) > 3]
+        _FASE_C_PATTERNS[key] = re.compile(
+            r"\b(" + "|".join(re.escape(a) for a in alts)
+            + r")\s*\([^)]*\)\s*:\s*(?:Elevado|Bajo|Normal|Alto)\s*\((\d+(?:[.,]\d+))",
+            re.IGNORECASE,
+        )
+    return _FASE_C_PATTERNS[key]
 
 
 def extract_numeric_params_regex(text: str) -> Dict[str, Tuple[float, float]]:
@@ -172,19 +208,13 @@ def extract_numeric_params_regex(text: str) -> Dict[str, Tuple[float, float]]:
 
     def best_match_for(search_text: str) -> Optional[Tuple[str, float]]:
         """Retorna el (key, valor) con el alias mas largo que aparezca en el texto."""
-        best = None  # (key, alias_len, value)
-        for key, spec in PARAM_SPECS.items():
+        for key, _alias, compiled in _param_patterns():
             if key in results:
                 continue
-            for alias in sorted(spec["aliases"], key=len, reverse=True):
-                value = _match_value_for_alias(alias, search_text, spec)
-                if value is not None and in_bounds(key, value):
-                    if best is None or len(alias) > best[1]:
-                        best = (key, len(alias), value)
-                    break
-        if best is None:
-            return None
-        return best[0], best[2]
+            value = _match_compiled(compiled, search_text, PARAM_SPECS[key])
+            if value is not None and in_bounds(key, value):
+                return key, value
+        return None
 
     # Fase A: por linea
     for line in lines:
@@ -198,27 +228,19 @@ def extract_numeric_params_regex(text: str) -> Dict[str, Tuple[float, float]]:
             conf[key] = 0.85
 
     # Fase B: texto completo (rellena faltantes)
+    for key, _alias, compiled in _param_patterns():
+        if key in results:
+            continue
+        value = _match_compiled(compiled, full_text, PARAM_SPECS[key])
+        if value is not None and in_bounds(key, value):
+            results[key] = value
+            conf[key] = 0.75
+
+    # Fase C: formato "Parametro (unit): Estado (valor unit > ref)"
     for key in PARAM_SPECS:
         if key in results:
             continue
-        spec = PARAM_SPECS[key]
-        for alias in sorted(spec["aliases"], key=len, reverse=True):
-            value = _match_value_for_alias(alias, full_text, spec)
-            if value is not None and in_bounds(key, value):
-                results[key] = value
-                conf[key] = 0.75
-                break
-
-    # Fase C: formato "Parametro (unit): Estado (valor unit > ref)"
-    for key, spec in PARAM_SPECS.items():
-        if key in results:
-            continue
-        alt = re.compile(
-            r"\b(" + "|".join(re.escape(a) for a in spec["aliases"] if len(a) > 3)
-            + r")\s*\([^)]*\)\s*:\s*(?:Elevado|Bajo|Normal|Alto)\s*\((\d+(?:[.,]\d+))",
-            re.IGNORECASE,
-        )
-        m = alt.search(full_text)
+        m = _fase_c_pattern(key).search(full_text)
         if m:
             value = to_number(m.group(2))
             if value is not None and in_bounds(key, value):
@@ -498,8 +520,12 @@ def _model_available(base_url: str, model: str) -> bool:
     return any(name == model or name.startswith(model + ":") for name in names)
 
 
-def _pull_model(base_url: str, model: str) -> str:
-    """Descarga el modelo con `ollama pull`. Retorna "ok" | "pull_failed"."""
+def _pull_model(base_url: str, model: str, cancel_cb=None) -> str:
+    """Descarga el modelo con `ollama pull`. Retorna "ok" | "pull_failed".
+
+    Espera en pasos cortos y revisa ``cancel_cb()`` para poder abandonar la
+    espera (p. ej. cuando el usuario cierra la app durante una descarga).
+    """
     exe = _find_ollama_exe()
     if not exe:
         return "pull_failed"
@@ -513,7 +539,11 @@ def _pull_model(base_url: str, model: str) -> str:
             stderr=subprocess.DEVNULL,
             creationflags=flags,
         )
-        proc.wait(timeout=3600)  # la descarga del modelo puede tardar minutos
+        while proc.poll() is None:
+            if cancel_cb is not None and cancel_cb():
+                logger.info("Descarga del modelo cancelada (cierre de la app).")
+                return "pull_failed"
+            time.sleep(0.5)
         return "ok" if proc.returncode == 0 else "pull_failed"
     except (OSError, subprocess.TimeoutExpired):
         return "pull_failed"
@@ -526,6 +556,7 @@ def ensure_ollama_running(
     pull_model: bool = True,
     exe_path: Optional[str] = None,
     progress_cb=None,
+    cancel_cb=None,
 ) -> str:
     """Garantiza Ollama corriendo y (si aplica) el modelo descargado.
 
@@ -535,7 +566,7 @@ def ensure_ollama_running(
       "model_pulled"  - modelo descargado ahora
       "not_found"     - Ollama no esta instalado
       "timeout"       - el servidor no respondio a tiempo
-      "pull_failed"   - el modelo no pudo descargarse
+      "pull_failed"   - el modelo no pudo descargarse (o la espera fue cancelada)
     """
     if exe_path is None:
         exe_path = _find_ollama_exe()
@@ -544,7 +575,7 @@ def ensure_ollama_running(
         if pull_model and not _model_available(base_url, model):
             if progress_cb:
                 progress_cb(f"Descargando modelo {model} (primera vez, puede tardar)...")
-            return _pull_model(base_url, model)
+            return _pull_model(base_url, model, cancel_cb)
         return "ok"
 
     if not exe_path:
@@ -572,11 +603,13 @@ def ensure_ollama_running(
 
     deadline = time.time() + wait
     while time.time() < deadline:
+        if cancel_cb is not None and cancel_cb():
+            return "timeout"
         if _server_ready(base_url):
             if pull_model and not _model_available(base_url, model):
                 if progress_cb:
                     progress_cb(f"Descargando modelo {model} (primera vez, puede tardar)...")
-                return _pull_model(base_url, model)
+                return _pull_model(base_url, model, cancel_cb)
             return "started"
         time.sleep(1.0)
     return "timeout"
@@ -606,6 +639,7 @@ def ollama_extract(
     auto_start_ollama: bool = True,
     pull_model: bool = True,
     progress_cb=None,
+    cancel_cb=None,
 ) -> Tuple[Optional[dict], str]:
     """Llama a Ollama y retorna (datos_parseados, modo).
 
@@ -615,7 +649,7 @@ def ollama_extract(
     if auto_start_ollama:
         status = ensure_ollama_running(
             base_url, model, wait=min(max(timeout, 5.0), 90.0),
-            pull_model=pull_model, progress_cb=progress_cb,
+            pull_model=pull_model, progress_cb=progress_cb, cancel_cb=cancel_cb,
         )
         if status == "not_found":
             raise RuntimeError(
@@ -628,6 +662,9 @@ def ollama_extract(
                 "Active Ollama manualmente o use solo extraccion por reglas."
             )
         if status == "pull_failed":
+            if cancel_cb is not None and cancel_cb():
+                # La app se esta cerrando: no continuar a la llamada de IA
+                raise RuntimeError("Descarga del modelo cancelada (la aplicacion se esta cerrando).")
             logger.warning("No se pudo descargar el modelo %s; se intentara igual.", model)
 
     guide_name = "Guias Colombianas SCC/LATAM" if guide == "colombian" else "ASE 2023"
@@ -883,6 +920,7 @@ def extract_from_text(
     auto_start_ollama: bool = True,
     pull_model: bool = True,
     progress_cb=None,
+    cancel_cb=None,
 ) -> ExtractionResult:
     """
     Extrae datos de un texto de ecocardiograma.
@@ -915,6 +953,7 @@ def extract_from_text(
                 auto_start_ollama=auto_start_ollama,
                 pull_model=pull_model,
                 progress_cb=progress_cb,
+                cancel_cb=cancel_cb,
             )
             if parsed:
                 ai_numeric = _numeric_from_ai(parsed)
@@ -1070,6 +1109,7 @@ def extract_from_file(
     auto_start_ollama: bool = True,
     pull_model: bool = True,
     progress_cb=None,
+    cancel_cb=None,
 ) -> ExtractionResult:
     """Extrae datos desde un archivo (PDF/TXT/CSV) completo."""
     try:
@@ -1085,5 +1125,6 @@ def extract_from_file(
         auto_start_ollama=auto_start_ollama,
         pull_model=pull_model,
         progress_cb=progress_cb,
+        cancel_cb=cancel_cb,
     )
     return result

@@ -52,13 +52,13 @@ El proyecto se distribuye como instalador generado con Inno Setup
 (`installer\ecocardiograma.iss`). El instalador puede, de forma opcional,
 descargar e instalar Ollama silenciosamente para habilitar la IA local.
 
-**Ultima version: v1.0.3** — `dist\installer\EcocardiogramaLocal-Setup-1.0.3.exe`
+**Ultima version: v1.0.4** — `dist\installer\EcocardiogramaLocal-Setup-1.0.4.exe`
 
 - **Verificacion SHA-256:**
-  `A4FB85E08C584E340F303EFC4969DF7523D8B39B566D1CA7BC8249292DD82015`
+  `E62A92BA0E1C1F2D9C3300688D0CFD9D48104633151794EC174F749A1570BD9D`
 - Verificar en PowerShell:
   ```powershell
-  Get-FileHash dist\installer\EcocardiogramaLocal-Setup-1.0.3.exe -Algorithm SHA256
+  Get-FileHash dist\installer\EcocardiogramaLocal-Setup-1.0.4.exe -Algorithm SHA256
   ```
 
 > **Datos en runtime:** la aplicacion instalada es de solo lectura en su carpeta
