@@ -1,4 +1,6 @@
 """Tests unitarios para el extractor (regex + IA local)."""
+import sys
+
 import pytest
 
 from src.core.ai_extractor import (
@@ -343,6 +345,10 @@ class TestPDFExtraction:
         printer.setPageSize(QPageSize(QPageSize.PageSizeId.A4))
         doc.print(printer)
 
+    @pytest.mark.skipif(
+        sys.platform != "win32",
+        reason="QPrinter (ruta PDF de Windows) no es estable bajo xvfb en CI",
+    )
     def test_extrae_texto_de_pdf(self, tmp_path):
         from src.core.ai_extractor import extract_text_from_pdf
 
