@@ -33,4 +33,6 @@ jobs:
         run: ruff check src tests
 
       - name: Tests con cobertura (umbral en pyproject.toml)
+        env:
+          QT_QPA_PLATFORM: offscreen
         run: xvfb-run -a pytest --cov=src --cov-report=term-missing
