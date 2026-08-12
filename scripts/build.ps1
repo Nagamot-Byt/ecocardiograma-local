@@ -36,7 +36,10 @@ if (-not $SkipTests) {
 }
 
 Write-Host "==> 2/5 PyInstaller" -ForegroundColor Cyan
-& $py -m PyInstaller ecocardiograma.spec --noconfirm --clean
+# Workpath fuera de la raiz (temp) para no dejar la carpeta build/ con el
+# stub del bootloader que confunde al usuario; dist/ queda como unica salida.
+$workPath = Join-Path $env:TEMP "ecocardiograma_build"
+& $py -m PyInstaller ecocardiograma.spec --noconfirm --clean --workpath $workPath
 if ($LASTEXITCODE -ne 0) { throw "PyInstaller fallo." }
 
 Write-Host "==> 3/5 Inno Setup (ISCC)" -ForegroundColor Cyan

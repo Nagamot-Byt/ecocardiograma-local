@@ -31,6 +31,18 @@ basados en las guias de la **Sociedad Colombiana de Cardiologia (SCC/LATAM)** y 
   usando extraccion por reglas (regex).
 - **Tesseract OCR** (opcional): solo necesario para leer imagenes.
 
+## Como abrir la aplicacion
+
+La forma mas facil en Windows es **doble clic en `AbrirEcocardiograma.cmd`**
+(raiz del proyecto): lanza la aplicacion compilada en
+`dist\EcocardiogramaLocal\EcocardiogramaLocal.exe`.
+
+> **Nota sobre carpetas:** `dist\EcocardiogramaLocal\EcocardiogramaLocal.exe`
+> es el ejecutable real. La carpeta `dist\installer\` contiene los instaladores
+> (use siempre el de version mas alta, p. ej. `EcocardiogramaLocal-Setup-1.0.4.exe`).
+> No ejecute archivos dentro de `build\` ni otras subcarpetas: son artefactos
+> internos del empaquetado y no abren la aplicacion.
+
 ## Instalacion
 
 ```bash
@@ -55,7 +67,7 @@ descargar e instalar Ollama silenciosamente para habilitar la IA local.
 **Ultima version: v1.0.4** — `dist\installer\EcocardiogramaLocal-Setup-1.0.4.exe`
 
 - **Verificacion SHA-256:**
-  `138FAC1D54290C8FA91471459364176EA2D28F95F2620EDFE7BD3AB869A8C155`
+  `50C657BD7CEF7A99B6308E9311EE35953ED32210530C3712386561568085806E`
 - Verificar en PowerShell:
   ```powershell
   Get-FileHash dist\installer\EcocardiogramaLocal-Setup-1.0.4.exe -Algorithm SHA256
