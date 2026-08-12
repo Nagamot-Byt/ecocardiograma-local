@@ -262,6 +262,62 @@ class TestAutoStartOllama:
         )
         assert status == "ok"
 
+    def test_pull_model_cancelado_interrumpe_espera(self, monkeypatch):
+        """Con cancel_cb activo, la descarga se abandona sin esperar al proceso."""
+        import subprocess
+
+        import src.core.ai_extractor as ae
+
+        class _FakeProc:
+            returncode = None
+
+            def poll(self):
+                return None
+
+        monkeypatch.setattr(ae, "_find_ollama_exe", lambda: r"C:\fake\ollama.exe")
+        monkeypatch.setattr(subprocess, "Popen", lambda *a, **k: _FakeProc())
+        status = ae._pull_model(
+            "http://127.0.0.1:9", "fake:model", cancel_cb=lambda: True
+        )
+        assert status == "pull_failed"
+
+    def test_ensure_cancelado_durante_espera_devuelve_timeout(self, monkeypatch):
+        """El cierre durante la espera de arranque aborta sin esperar el wait."""
+        import subprocess
+
+        import src.core.ai_extractor as ae
+
+        monkeypatch.setattr(ae, "_server_ready", lambda *a, **k: False)
+        monkeypatch.setattr(ae, "_find_ollama_exe", lambda: r"C:\fake\ollama.exe")
+        monkeypatch.setattr(subprocess, "Popen", lambda *a, **k: None)
+        status = ae.ensure_ollama_running(
+            "http://127.0.0.1:9", "m", wait=5, pull_model=False,
+            cancel_cb=lambda: True,
+        )
+        assert status == "timeout"
+
+    def test_extract_cancel_durante_pull_cae_a_regex(self, monkeypatch):
+        """Cancelar durante la descarga no bloquea: la extraccion cae a regex."""
+        import subprocess
+
+        import src.core.ai_extractor as ae
+
+        class _FakeProc:
+            returncode = None
+
+            def poll(self):
+                return None
+
+        monkeypatch.setattr(ae, "_find_ollama_exe", lambda: r"C:\fake\ollama.exe")
+        monkeypatch.setattr(ae, "_server_ready", lambda *a, **k: True)
+        monkeypatch.setattr(ae, "_model_available", lambda *a, **k: False)
+        monkeypatch.setattr(subprocess, "Popen", lambda *a, **k: _FakeProc())
+        result = ae.extract_from_text(
+            "DDI (mm): 54", use_ai=True, cancel_cb=lambda: True
+        )
+        assert result.source == "regex"
+        assert result.numeric_params.get("ddi") == 54
+
 
 class TestPDFExtraction:
     def _write_pdf_via_qprinter(self, pdf_path: str, html: str) -> None:

@@ -5,7 +5,7 @@ Carga un archivo (PDF/TXT) o texto pegado, extrae los datos con la IA local
 """
 import os
 
-from PyQt6.QtCore import Qt, pyqtSignal, QThread
+from PyQt6.QtCore import Qt, pyqtSignal, QThread, QTimer
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFileDialog, QTextEdit, QPlainTextEdit,
     QComboBox, QCheckBox, QMessageBox, QSplitter,
@@ -38,6 +38,14 @@ class ExtractWorker(QThread):
         self.ai_timeout = ai_timeout
         self.auto_start_ollama = auto_start_ollama
         self.pull_model = pull_model
+        self._cancel = False
+
+    def request_cancel(self):
+        """Pide al hilo que abandone operaciones largas (p. ej. descarga de modelo)."""
+        self._cancel = True
+
+    def _is_cancelled(self) -> bool:
+        return self._cancel
 
     def run(self):
         try:
@@ -48,6 +56,7 @@ class ExtractWorker(QThread):
                 auto_start_ollama=self.auto_start_ollama,
                 pull_model=self.pull_model,
                 progress_cb=self.progress.emit,
+                cancel_cb=self._is_cancelled,
             )
             self.finished_ok.emit(result)
         except Exception as e:  # noqa: BLE001
@@ -85,8 +94,11 @@ class AITab(QWidget):
         self._last_result: ExtractionResult | None = None
         self._worker = None
         self._load_worker = None
+        self._checking_ollama = False
         self._build_ui()
-        self._refresh_ollama_status()
+        # El chequeo de Ollama es una llamada de red (hasta ~2s): se difiere al
+        # siguiente ciclo del event loop para que la ventana aparezca al instante.
+        QTimer.singleShot(0, self._refresh_ollama_status)
 
     # ── UI ──────────────────────────────────────────────────────────────
 
@@ -190,10 +202,15 @@ class AITab(QWidget):
     # ── Acciones de UI ─────────────────────────────────────────────────
 
     def _refresh_ollama_status(self):
+        if self._checking_ollama:
+            return  # Ya hay una consulta en curso; evitar solapamiento
+        self._checking_ollama = True
         try:
             ok, models = check_ollama(self.config.ai.base_url, timeout=2.0)
         except Exception:  # noqa: BLE001
             ok, models = False, []
+        finally:
+            self._checking_ollama = False
 
         if ok:
             # No reordenar el modelo configurado al inicio de la lista
@@ -389,17 +406,22 @@ class AITab(QWidget):
         """Establece el callback que aplica el resultado al informe."""
         self._apply_callback = callback
 
-    def shutdown(self, timeout_ms: int = 60000):
-        """Espera a que terminen los hilos de trabajo antes de cerrar la app.
+    def shutdown(self, timeout_ms: int = 30000):
+        """Detiene los hilos de trabajo de forma cooperativa al cerrar la app.
 
-        Evita el error "QThread: Destroyed while thread is still running".
-        Si un hilo sigue activo (p. ej. descargando el modelo de Ollama),
-        se registra una advertencia en lugar de destruirlo a medias.
+        Primero pide la cancelacion (aborta una descarga de modelo en curso) y
+        luego espera un tiempo de gracia acotado. Si un hilo aun esta activo
+        (p. ej. el modelo esta generando), se registra una advertencia en lugar
+        de destruir el QThread a medias.
         """
+        for worker in (self._load_worker, self._worker):
+            cancel = getattr(worker, "request_cancel", None)
+            if worker is not None and cancel is not None:
+                cancel()
         for name, worker in (("carga", self._load_worker), ("extraccion", self._worker)):
             if worker is not None and worker.isRunning():
                 if not worker.wait(timeout_ms):
                     logger.warning(
                         f"Hilo de {name} sigue trabajando al cerrar la app "
-                        "(posible descarga del modelo en curso)."
+                        "(posible generacion del modelo en curso)."
                     )

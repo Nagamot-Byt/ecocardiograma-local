@@ -4,7 +4,7 @@ build-backend = "setuptools.backends._legacy:_Backend"
 
 [project]
 name = "ecocardiograma-local"
-version = "1.0.3"
+version = "1.0.4"
 description = "Aplicacion local offline para generacion de informes ecocardiograficos validados con guias colombianas SCC/LATAM, con lectura automatizada por IA local."
 readme = "README.md"
 license = {text = "MIT"}
