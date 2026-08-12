@@ -35,5 +35,5 @@ ai:
 # Verificador de actualizaciones contra GitHub Releases.
 # Dejar repo vacio (o enabled: false) para deshabilitar el chequeo.
 update:
-  enabled: false
-  repo: ""
+  enabled: true
+  repo: "Nagamot-Byt/ecocardiograma-local"

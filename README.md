@@ -55,7 +55,7 @@ descargar e instalar Ollama silenciosamente para habilitar la IA local.
 **Ultima version: v1.0.4** — `dist\installer\EcocardiogramaLocal-Setup-1.0.4.exe`
 
 - **Verificacion SHA-256:**
-  `E62A92BA0E1C1F2D9C3300688D0CFD9D48104633151794EC174F749A1570BD9D`
+  `138FAC1D54290C8FA91471459364176EA2D28F95F2620EDFE7BD3AB869A8C155`
 - Verificar en PowerShell:
   ```powershell
   Get-FileHash dist\installer\EcocardiogramaLocal-Setup-1.0.4.exe -Algorithm SHA256
