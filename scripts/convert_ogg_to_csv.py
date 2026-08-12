@@ -21,7 +21,7 @@ import json
 import re
 import argparse
 import pandas as pd
-from typing import Optional, Dict
+from typing import Dict
 
 
 # Mapeo de nombres comunes en transcripciones a atributos del sistema
@@ -162,12 +162,12 @@ def convert_file(input_path: str, output_path: str = None) -> str:
 
     elif ext in (".ogg", ".wav", ".mp3"):
         print(f"Nota: Los archivos de audio ({ext}) requieren transcripcion previa.")
-        print(f"Use una herramienta como Whisper para transcribir, luego convierta el .txt resultante.")
+        print("Use una herramienta como Whisper para transcribir, luego convierta el .txt resultante.")
         sys.exit(1)
 
     else:
         print(f"Error: Formato no soportado: {ext}")
-        print(f"Formatos soportados: .txt, .json, .csv")
+        print("Formatos soportados: .txt, .json, .csv")
         sys.exit(1)
 
     if not data:

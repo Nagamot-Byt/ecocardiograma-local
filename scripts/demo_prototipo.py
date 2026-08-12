@@ -40,7 +40,7 @@ def paso_1_init():
     ensure_dir(cfg.user_input_dir)
     ensure_dir(cfg.output_dir)
 
-    print(f"  Config cargado:")
+    print("  Config cargado:")
     print(f"    Referencias ASE: {cfg.ase_path}")
     print(f"    Template: {cfg.report_template}")
     print(f"    Output: {cfg.output_dir}")
@@ -61,15 +61,11 @@ def paso_2_load_references(cfg):
         print("  ERROR: No se pudieron cargar las referencias ASE")
         sys.exit(1)
 
-    rangos_m = loader.reference_ranges.get_all_ranges(
-        loader.reference_ranges._rangos.__class__.__bases__[0] is object
-        or list(loader.reference_ranges._rangos.keys())[0]
-    )
     from src.models.patient import Sexo
 
     n_m = len(loader.reference_ranges.get_all_ranges(Sexo.MASCULINO))
     n_f = len(loader.reference_ranges.get_all_ranges(Sexo.FEMENINO))
-    print(f"  Referencias cargadas exitosamente:")
+    print("  Referencias cargadas exitosamente:")
     print(f"    Parametros masculinos: {n_m}")
     print(f"    Parametros femeninos: {n_f}")
 
@@ -147,13 +143,13 @@ def paso_4_validate(patient, loader):
     print(f"  Sin referencia: {sin_ref}")
 
     if anormales > 0:
-        print(f"\n  ALERTAS - Valores fuera de rango:")
+        print("\n  ALERTAS - Valores fuera de rango:")
         for nombre, res in resultados.items():
             if res["normal"] is False:
                 print(f"    [!] {nombre}: {res['mensaje']}")
 
     summary = validator.get_summary(patient)
-    print(f"\n  Resumen:")
+    print("\n  Resumen:")
     for line in summary:
         print(f"    {line}")
 
@@ -168,12 +164,12 @@ def paso_5_visual_summary(patient):
     handler = VisualInputHandler()
     visual = patient.get_visual_fields()
 
-    print(f"  Hallazgos registrados:")
+    print("  Hallazgos registrados:")
     for nombre, valor in visual.items():
         print(f"    {nombre}: {valor}")
 
     summary = handler.get_summary(patient)
-    print(f"\n  Relevantes:")
+    print("\n  Relevantes:")
     for line in summary:
         print(f"    {line}")
 
@@ -187,7 +183,7 @@ def paso_6_generate_report(patient, validator, visual_handler, cfg):
 
     engine = ReportEngine(cfg.report_template, cfg.output_dir)
 
-    print(f"  Renderizando plantilla...")
+    print("  Renderizando plantilla...")
     report_path = engine.generate_report(
         patient, validator, visual_handler
     )
@@ -200,9 +196,9 @@ def paso_6_generate_report(patient, validator, visual_handler, cfg):
     print(f"  Tamano: {file_size:,} bytes")
 
     if is_pdf:
-        print(f"  PDF generado con WeasyPrint - LISTO")
+        print("  PDF generado con WeasyPrint - LISTO")
     else:
-        print(f"  WeasyPrint no disponible - se genero solo HTML")
+        print("  WeasyPrint no disponible - se genero solo HTML")
 
     # Copiar a /home/z/my-project/download/ para el usuario
     download_dir = "/home/z/my-project/download"
@@ -235,12 +231,12 @@ def paso_7_secure_delete(cfg):
     if user_files or output_files:
         deleter = SecureDeleter(cfg.user_input_dir, cfg.output_dir, enabled=True)
         result = deleter.clean_session()
-        print(f"\n  Limpieza ejecutada:")
+        print("\n  Limpieza ejecutada:")
         print(f"    Archivos eliminados de user_input: {len(result['user_input'])}")
         print(f"    Archivos eliminados de output: {len(result['output'])}")
         print(f"    Total: {result['total']}")
     else:
-        print(f"  No hay archivos temporales para limpiar.")
+        print("  No hay archivos temporales para limpiar.")
 
 
 def paso_8_load_from_csv(cfg, loader):
@@ -264,17 +260,16 @@ def paso_8_load_from_csv(cfg, loader):
     print(f"  CSV de prueba creado: {csv_path}")
 
     # Cargar en un nuevo paciente
-    new_patient = Patient(sexo=Sexo.MASCULINO if False else None)
     from src.models.patient import Sexo
     new_patient = Patient(sexo=Sexo.FEMENINO)
     success = loader.load_patient_from_file(csv_path, new_patient)
 
     if success:
-        print(f"  Carga exitosa:")
+        print("  Carga exitosa:")
         for name, val in new_patient.get_numeric_fields().items():
             print(f"    {name}: {val}")
     else:
-        print(f"  La carga fallo (esperado si faltan mapeos)")
+        print("  La carga fallo (esperado si faltan mapeos)")
 
     # El CSV temporal sera limpiado en el paso 7 (o al cierre)
 
@@ -292,7 +287,7 @@ def main():
         patient = paso_3_create_patient()
         validator, results = paso_4_validate(patient, loader)
         visual_handler = paso_5_visual_summary(patient)
-        report_path = paso_6_generate_report(patient, validator, visual_handler, cfg)
+        paso_6_generate_report(patient, validator, visual_handler, cfg)
         paso_8_load_from_csv(cfg, loader)
         paso_7_secure_delete(cfg)
 
