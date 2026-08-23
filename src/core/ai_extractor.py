@@ -301,7 +301,13 @@ def extract_visual_regex(text: str) -> Dict[str, str]:
         norm, re.IGNORECASE,
     )
     if derrame:
-        visual["derrame_pericardico"] = _normalize_severity(derrame.group(1))
+        # El derrame usa su propia escala canonica ("Minimo", no "Leve"):
+        # misma remaps que aplica _normalize_visual en la ruta IA para que
+        # ambas rutas produzcan valores identicos.
+        sev = _normalize_severity(derrame.group(1))
+        mapa_derrame = {"Leve": "Minimo", "Moderada": "Moderado",
+                        "Severa": "Severo", "Grave": "Grave", "No": "No"}
+        visual["derrame_pericardico"] = mapa_derrame.get(sev, "No")
 
     # Contractilidad y segmentos se buscan por linea: la primera que contenga
     # la etiqueta define el valor, y la captura se limita al final de la linea
@@ -477,6 +483,26 @@ def check_ollama(base_url: str = "http://localhost:11434", timeout: float = 3.0)
         return False, []
 
 
+# Limite de caracteres enviados al modelo local (<7B). Documentos OCR muy
+# largos desbordan la ventana de contexto del modelo y degradan la extraccion
+# (salidas truncadas o incoherentes). Se conserva cabeza + cola porque los
+# informes suelen traer parametros al inicio/centro e impresion clinica al final.
+MAX_AI_INPUT_CHARS = 9000
+
+
+def _truncate_for_model(text: str) -> str:
+    """Recorta el texto a MAX_AI_INPUT_CHARS conservando cabeza y cola."""
+    if len(text) <= MAX_AI_INPUT_CHARS:
+        return text
+    head = MAX_AI_INPUT_CHARS * 2 // 3
+    tail = MAX_AI_INPUT_CHARS - head
+    return (
+        text[:head]
+        + "\n[...fragmento omitido por longitud...]\n"
+        + text[-tail:]
+    )
+
+
 # ---------------------------------------------------------------------------
 # Arranque automatico de Ollama
 # ---------------------------------------------------------------------------
@@ -508,6 +534,27 @@ def _server_ready(base_url: str, timeout: float = 3.0) -> bool:
         return False
 
 
+# Espacio minimo libre (GB) para intentar descargar un modelo local:
+# cubre el peso del modelo (~2 GB para qwen2.5:3b) mas margen de trabajo.
+_MIN_FREE_GB_FOR_PULL = 3.0
+
+
+def _disk_space_ok(path_hint: Optional[str] = None, required_gb: float = _MIN_FREE_GB_FOR_PULL) -> bool:
+    """True si hay espacio suficiente en disco para descargar el modelo.
+
+    Si no se puede medir (sistema de archivos exotico, permisos), se permite
+    continuar: el propio `ollama pull` reportara el fallo.
+    """
+    try:
+        import shutil
+
+        target = path_hint or os.path.expanduser("~")
+        free_gb = shutil.disk_usage(target).free / (1024 ** 3)
+        return free_gb >= required_gb
+    except Exception:  # noqa: BLE001 - medir no debe bloquear nunca
+        return True
+
+
 def _model_available(base_url: str, model: str) -> bool:
     """Retorna True si el modelo (o una variante suya) ya esta descargado."""
     try:
@@ -528,6 +575,13 @@ def _pull_model(base_url: str, model: str, cancel_cb=None) -> str:
     """
     exe = _find_ollama_exe()
     if not exe:
+        return "pull_failed"
+    if not _disk_space_ok():
+        logger.warning(
+            "Espacio en disco insuficiente (< %.0f GB libres): se omite la "
+            "descarga del modelo para no llenar el disco.",
+            _MIN_FREE_GB_FOR_PULL,
+        )
         return "pull_failed"
     flags = 0
     if os.name == "nt":
@@ -630,6 +684,35 @@ def _extract_json_block(text: str) -> Optional[dict]:
         return None
 
 
+def _post_chat_with_retry(
+    url: str,
+    payload: dict,
+    read_timeout: float,
+    cancel_cb=None,
+    attempts: int = 2,
+):
+    """POST a /api/chat con reintentos ante fallos de red transitorios.
+
+    El timeout se divide: 10 s para conectar y ``read_timeout`` para la
+    generacion del modelo (que puede tardar minutos con stream=False).
+    """
+    last_exc: Optional[Exception] = None
+    for attempt in range(1, attempts + 1):
+        if cancel_cb is not None and cancel_cb():
+            raise RuntimeError("Extraccion cancelada por el usuario.")
+        try:
+            return requests.post(url, json=payload, timeout=(10.0, read_timeout))
+        except requests.RequestException as e:
+            last_exc = e
+            logger.warning(
+                "Fallo hablando con Ollama (intento %d/%d): %s",
+                attempt, attempts, e,
+            )
+            if attempt < attempts:
+                time.sleep(1.5)
+    raise last_exc
+
+
 def ollama_extract(
     text: str,
     model: str,
@@ -671,17 +754,24 @@ def ollama_extract(
     params_list = ", ".join(sorted(PARAM_SPECS.keys()))
     system = _SYSTEM_PROMPT.format(params=params_list, guide=guide_name)
 
+    user_text = _truncate_for_model(text)
+    if len(user_text) < len(text):
+        logger.info(
+            "Texto recortado para el modelo: %d -> %d caracteres.",
+            len(text), len(user_text),
+        )
+
     payload = {
         "model": model,
         "messages": [
             {"role": "system", "content": system},
-            {"role": "user", "content": f"Texto del documento:\n\n{text}"},
+            {"role": "user", "content": f"Texto del documento:\n\n{user_text}"},
         ],
         "stream": False,
         "format": "json",
     }
     url = f"{base_url.rstrip('/')}/api/chat"
-    resp = requests.post(url, json=payload, timeout=timeout)
+    resp = _post_chat_with_retry(url, payload, read_timeout=timeout, cancel_cb=cancel_cb)
     if resp.status_code != 200:
         raise RuntimeError(f"Ollama respondio {resp.status_code}: {resp.text[:300]}")
 
@@ -796,7 +886,9 @@ def _numeric_from_ai(ai: dict) -> Dict[str, Tuple[float, float]]:
     for p in ai.get("numericParams", []) or []:
         key = str(p.get("key", "")).strip()
         value = to_number(p.get("value"))
-        conf = to_number(p.get("confidence")) or 0.7
+        conf = to_number(p.get("confidence"))
+        if conf is None:
+            conf = 0.7  # Solo default cuando el modelo no reporta confianza
         if key in PARAM_SPECS and value is not None and in_bounds(key, value):
             result[key] = (value, min(max(conf, 0.0), 1.0))
     return result
@@ -993,7 +1085,11 @@ def extract_from_text(
     # Datos del paciente: el regex (determinista) tiene prioridad por campo y
     # la IA solo rellena los huecos. Asi un valor alucinado por la IA nunca
     # pisa un valor que el regex extrajo correctamente (p. ej. la edad).
-    patient = _merge_patient(ai_patient, regex_patient)
+    # La salida de la IA SIEMPRE pasa por _normalize_patient antes de fusionar:
+    # sin ese paso, valores no canonicos del modelo (p. ej. sexo="masculino"
+    # en vez de "M", edades imposibles o fechas malformadas) entrarian sin
+    # validacion al informe clinico.
+    patient = _merge_patient(_normalize_patient(ai_patient), regex_patient)
 
     # Impresion clinica de la IA (si existe)
     if ai_clinical:
@@ -1080,23 +1176,35 @@ def extract_text_from_image(path: str, lang: str = "spa+eng") -> str:
     return text.strip()
 
 
-def extract_text_from_file(path: str) -> str:
-    """Extrae texto de un archivo soportado (PDF, imagen con OCR, TXT, CSV)."""
+def extract_text_from_file(path: str, max_bytes: Optional[int] = None) -> str:
+    """Extrae texto de un archivo soportado (PDF, imagen con OCR, TXT, CSV).
+
+    ``max_bytes`` permite unificar el limite con la configuracion de la app;
+    por defecto se usa MAX_EXTRACT_FILE_BYTES.
+    """
     try:
         size = os.path.getsize(path)
     except OSError:
         size = 0
-    if size > MAX_EXTRACT_FILE_BYTES:
+    limit = max_bytes if max_bytes and max_bytes > 0 else MAX_EXTRACT_FILE_BYTES
+    if size > limit:
         raise ValueError(
-            f"El archivo supera el limite de {MAX_EXTRACT_FILE_BYTES // (1024 * 1024)} MB."
+            f"El archivo supera el limite de {limit // (1024 * 1024)} MB."
         )
     lower = path.lower()
     if lower.endswith(".pdf"):
         return extract_text_from_pdf(path)
     if lower.endswith(IMAGE_EXTENSIONS):
         return extract_text_from_image(path)
-    with open(path, "r", encoding="utf-8", errors="replace") as f:
-        return f.read().strip()
+    # Texto plano: UTF-8 primero; si el documento usa una codificacion
+    # heredada (Latin-1 / Windows-1252, comun en equipos clinicos), se decodifica
+    # con ella para no garabatear los acentos que los regex necesitan.
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read().strip()
+    except UnicodeDecodeError:
+        with open(path, "r", encoding="latin-1", errors="replace") as f:
+            return f.read().strip()
 
 
 def extract_from_file(

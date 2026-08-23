@@ -2,11 +2,14 @@
 Configuracion de la aplicacion.
 Lee config.yaml y provee los parametros centralizados.
 """
+import logging
 import os
 import sys
 
 import yaml
 from dataclasses import dataclass, field
+
+logger = logging.getLogger("ecocardiograma")
 
 
 @dataclass
@@ -78,6 +81,8 @@ def _build_ai_config(data: dict) -> AIConfig:
         ai.timeout = float(ai_data.get("timeout", ai.timeout))
     except (ValueError, TypeError):
         ai.timeout = AIConfig.timeout
+    # Clamp de sanidad: timeout util entre 5 s y 30 min
+    ai.timeout = min(max(ai.timeout, 5.0), 1800.0)
     ai.use_ai = bool(ai_data.get("use_ai", ai.use_ai))
     ai.auto_start = bool(ai_data.get("auto_start", ai.auto_start))
     ai.pull_model = bool(ai_data.get("pull_model", ai.pull_model))
@@ -130,8 +135,22 @@ def load_config(config_path: str = None) -> Config:
                 pass  # Mantener el valor por defecto
             cfg.ai = _build_ai_config(data)
             cfg.update = _build_update_config(data)
-        except Exception:
-            pass  # Usar valores por defecto
+        except yaml.YAMLError as e:
+            # Un config.yaml con sintaxis invalida NO debe tumbar la app: se
+            # registran los defaults usados para que el usuario pueda corregirlo.
+            logger.error(
+                "configs/config.yaml tiene un error de sintaxis (%s); "
+                "se usan valores por defecto.", e,
+            )
+        except Exception as e:  # noqa: BLE001 - la config nunca debe romper el arranque
+            logger.error(
+                "No se pudo leer configs/config.yaml (%s); se usan valores "
+                "por defecto.", e,
+            )
+
+    # Clamps de sanidad sobre valores ya parseados
+    cfg.altitude_masl = min(max(cfg.altitude_masl, 0.0), 6000.0)
+    cfg.max_file_mb = min(max(cfg.max_file_mb, 1), 500)
 
     # Resolver rutas: solo lectura contra la raiz del proyecto (_internal en modo
     # congelado) y rutas de escritura contra el data root (%LOCALAPPDATA%).

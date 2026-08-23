@@ -489,7 +489,15 @@ class MainWindow(QMainWindow):
         )
         if filepath:
             # Copiar al directorio user_input
-            dest = copy_to_user_input(filepath, self.config.user_input_dir)
+            try:
+                dest = copy_to_user_input(filepath, self.config.user_input_dir)
+            except OSError as e:
+                QMessageBox.critical(
+                    self, "Error",
+                    f"No se pudo copiar el archivo a la sesion:\n{e}"
+                )
+                logger.error(f"Fallo copiando archivo a user_input: {e}")
+                return
             try:
                 logger.info(f"Archivo copiado a user_input: {os.path.basename(dest)}")
             except Exception as e:  # pragma: no cover
@@ -584,14 +592,33 @@ class MainWindow(QMainWindow):
         self._start_update_check(manual=True)
 
     def _start_update_check(self, manual: bool):
-        """Lanza la consulta de actualizaciones en un hilo (silenciosa o manual)."""
+        """Lanza la consulta de actualizaciones en un hilo (silenciosa o manual).
+
+        Antifallo: si ya hay una verificacion en curso no se lanza otra
+        (evita solapamiento y el GC del hilo anterior mientras corre, que
+        abortaria con 'QThread: Destroyed while thread is still running').
+        """
+        worker = getattr(self, "_update_worker", None)
+        if worker is not None and worker.isRunning():
+            if manual:
+                self.statusBar().showMessage(
+                    "Ya hay una verificacion de actualizaciones en curso...", 3000
+                )
+            return
         worker = UpdateCheckWorker(self.config.update.repo, APP_VERSION)
         worker.finished_check.connect(
             lambda resultado, m=manual: self._on_update_result(resultado, m)
         )
+        # Limpiar la referencia ANTES de destruir el objeto C++ (orden garantizado
+        # por conexion): evita 'wrapped C/C++ object has been deleted' en reconsultas.
+        worker.finished.connect(self._on_update_worker_finished)
+        worker.finished.connect(worker.deleteLater)
         self.statusBar().showMessage("Buscando actualizaciones...")
         self._update_worker = worker
         worker.start()
+
+    def _on_update_worker_finished(self):
+        self._update_worker = None
 
     def _on_update_result(self, resultado: dict, manual: bool):
         if resultado.get("error"):
@@ -617,14 +644,27 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage("Sin actualizaciones disponibles.", 5000)
 
     def closeEvent(self, event):
-        """Maneja el cierre de la ventana: detiene hilos y limpia datos temporales."""
-        # Esperar a que terminen los hilos de extraccion/lectura de la pestana IA
-        self.ai_tab.shutdown()
-        # Esperar al hilo de verificacion de actualizaciones si sigue corriendo
-        worker = getattr(self, "_update_worker", None)
-        if worker is not None and worker.isRunning():
-            worker.wait(2000)
-        # Limpiar sesion al cerrar
-        self.secure_deleter.clean_session()
-        logger.info("Aplicacion cerrada. Sesion limpiada.")
+        """Manejo de cierre resiliente: cada etapa antifallo es independiente.
+
+        Ningun fallo aqui debe impedir que las etapas posteriores se ejecuten:
+        el borrado seguro es lo ultimo y SIEMPRE se intenta.
+        """
+        # 1. Detener hilos de extraccion/lectura de la pestana IA
+        try:
+            self.ai_tab.shutdown()
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"Advertencia deteniendo hilos de IA al cerrar: {e}")
+        # 2. Esperar al hilo de verificacion de actualizaciones si sigue corriendo
+        try:
+            worker = getattr(self, "_update_worker", None)
+            if worker is not None and worker.isRunning():
+                worker.wait(2000)
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"Advertencia esperando hilo de actualizaciones: {e}")
+        # 3. Limpieza segura de temporales (critica: contiene PHI potencial)
+        try:
+            self.secure_deleter.clean_session()
+            logger.info("Aplicacion cerrada. Sesion limpiada.")
+        except Exception as e:  # noqa: BLE001
+            logger.error(f"Limpieza de sesion fallo al cerrar: {e}")
         event.accept()

@@ -30,6 +30,12 @@ def main():
     app.setApplicationName("Ecocardiograma Local")
     app.setOrganizationName("EcoLocal")
 
+    # Protocolo antifallo: excepciones no controladas se registran y se
+    # informan sin abortar el proceso (garantiza el borrado seguro al salir).
+    from src.utils.error_guard import install_excepthook
+
+    install_excepthook()
+
     # Configurar fuente por defecto
     font = QFont("Segoe UI", 10)
     app.setFont(font)
