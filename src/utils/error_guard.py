@@ -23,11 +23,23 @@ logger = logging.getLogger("ecocardiograma")
 # Acumulador de dialogos mostrados (evitar bucles de errores -> dialogo -> error)
 _MAX_ERROR_DIALOGS = 3
 _state = {"dialogs": 0, "dialogs_enabled": True}
+_original_hook = {"hook": None}
 
 
 def reset_error_guard() -> None:
     """Reinicia el contador de dialogos (util en tests)."""
     _state["dialogs"] = 0
+
+
+def uninstall_excepthook() -> None:
+    """Restaura el excepthook previo a la instalacion (simetria install/uninstall).
+
+    Imprescindible para higiene de tests y para embeber la app; sin el, una
+    vez instalado el hook no habia forma de recuperar el anterior.
+    """
+    if _original_hook["hook"] is not None:
+        sys.excepthook = _original_hook["hook"]
+        _original_hook["hook"] = None
 
 
 def set_dialogs_enabled(enabled: bool) -> None:
@@ -95,4 +107,6 @@ def install_excepthook(allow_abort: bool = False) -> None:
         if allow_abort:
             sys.__excepthook__(exc_type, exc_value, exc_tb)
 
+    if _original_hook["hook"] is None:
+        _original_hook["hook"] = sys.excepthook
     sys.excepthook = hook

@@ -34,12 +34,19 @@ def version_es_mayor(version_a: str, version_b: str) -> bool:
 
 
 def _get_json(url: str, timeout: float) -> Optional[dict]:
+    # Defensa en profundidad: solo se consulta el dominio oficial de la API,
+    # con esquema https explicito (auditado por bandit B310).
+    if not str(url).startswith("https://api.github.com/"):
+        return None
     try:
         request = urllib.request.Request(
             url, headers={"User-Agent": "EcocardiogramaLocal-updater", "Accept": "application/vnd.github+json"}
         )
         with urllib.request.urlopen(request, timeout=timeout) as resp:  # noqa: S310
-            return json.loads(resp.read().decode("utf-8"))
+            parsed = json.loads(resp.read().decode("utf-8"))
+            # Contrato: siempre dict o None. Un endpoint comprometido/roto que
+            # devuelva una lista u otro tipo no debe tumbar al llamador.
+            return parsed if isinstance(parsed, dict) else None
     except Exception:  # noqa: BLE001 - la red falla de muchas formas; siempre devolver None
         return None
 
@@ -47,7 +54,9 @@ def _get_json(url: str, timeout: float) -> Optional[dict]:
 def fetch_latest_release(repo: str, timeout: float = 10.0) -> Optional[str]:
     """Retorna el tag_name de la ultima release de ``repo`` (o None si falla)."""
     data = _get_json(_GITHUB_API.format(repo=repo), timeout)
-    if not data:
+    # Doble defensa: aunque _get_json ya solo devuelve dicts, el consumidor
+    # no confia en el contrato por si el origen cambia (fail-safe).
+    if not isinstance(data, dict):
         return None
     return data.get("tag_name")
 

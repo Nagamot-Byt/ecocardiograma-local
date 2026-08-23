@@ -23,13 +23,20 @@ def generate_patient_id() -> str:
 
 
 def format_number(value: Optional[float], decimals: int = 1) -> str:
-    """Formatea un numero float a string con decimales. Retorna '-' si es None."""
+    """Formatea un numero float a string con decimales. Retorna '-' si es None.
+
+    Los valores no finitos (nan/inf) tambien se representan como '-': nunca
+    deben llegar al informe medico como 'nan' o 'inf'.
+    """
     if value is None:
         return "-"
     try:
-        return f"{float(value):.{decimals}f}"
+        value = float(value)
     except (ValueError, TypeError):
         return "-"
+    if value != value or value in (float("inf"), float("-inf")):  # nan / +-inf
+        return "-"
+    return f"{value:.{decimals}f}"
 
 
 def ensure_dir(path: str) -> None:
@@ -39,7 +46,16 @@ def ensure_dir(path: str) -> None:
 
 
 def safe_filename(prefix: str, extension: str = ".pdf") -> str:
-    """Genera un nombre de archivo seguro con timestamp."""
+    """Genera un nombre de archivo seguro con timestamp.
+
+    Antifallo: el prefijo se sanitiza (sin separadores de ruta ni caracteres
+    problematicos) para que nunca pueda inyectar rutas relativas.
+    """
+    import re as _re
+
+    prefix = _re.sub(r"[^\w\-]+", "_", str(prefix)).strip("_") or "archivo"
+    if not extension.startswith("."):
+        extension = "." + extension
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     uid = str(uuid.uuid4())[:4]
     return f"{prefix}_{ts}_{uid}{extension}"
