@@ -20,6 +20,7 @@ import re
 import subprocess
 import time
 import unicodedata
+from datetime import datetime
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -491,14 +492,20 @@ MAX_AI_INPUT_CHARS = 9000
 
 
 def _truncate_for_model(text: str) -> str:
-    """Recorta el texto a MAX_AI_INPUT_CHARS conservando cabeza y cola."""
+    """Recorta el texto a MAX_AI_INPUT_CHARS conservando cabeza y cola.
+
+    El marcador se descuenta del presupuesto para que el resultado final
+    NUNCA exceda MAX_AI_INPUT_CHARS (contrato probado por fuzz).
+    """
     if len(text) <= MAX_AI_INPUT_CHARS:
         return text
-    head = MAX_AI_INPUT_CHARS * 2 // 3
-    tail = MAX_AI_INPUT_CHARS - head
+    marker = "\n[...fragmento omitido por longitud...]\n"
+    budget = max(MAX_AI_INPUT_CHARS - len(marker), 100)
+    head = budget * 2 // 3
+    tail = budget - head
     return (
         text[:head]
-        + "\n[...fragmento omitido por longitud...]\n"
+        + marker
         + text[-tail:]
     )
 
@@ -870,8 +877,16 @@ def _normalize_patient(raw: Dict[str, Any]) -> Dict[str, Any]:
     fecha = str(raw.get("fecha_estudio", "")).strip()
     m = re.search(r"(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2,4})", fecha)
     if m:
-        y = m.group(3) if len(m.group(3)) == 4 else "20" + m.group(3)
-        patient["fecha_estudio"] = f"{m.group(1).zfill(2)}/{m.group(2).zfill(2)}/{y}"
+        d_, m_, y = m.group(1), m.group(2), m.group(3)
+        y = y if len(y) == 4 else "20" + y
+        # Antifallo: una fecha imposible (31/02) no debe llegar al informe
+        # medico; si el calendario la rechaza, se prefiere None (el informe
+        # usara la fecha de generacion) antes que imprimir un dato absurdo.
+        try:
+            datetime.strptime(f"{d_.zfill(2)}/{m_.zfill(2)}/{y}", "%d/%m/%Y")
+            patient["fecha_estudio"] = f"{d_.zfill(2)}/{m_.zfill(2)}/{y}"
+        except ValueError:
+            patient["fecha_estudio"] = None
 
     notas = str(raw.get("notas", "")).strip()
     if notas and notas.lower() not in ("null", "none"):

@@ -67,9 +67,12 @@ class DataLoader:
         try:
             import pandas as pd  # import perezoso: pandas es pesado de cargar
 
-            if filepath.endswith(".xlsx"):
+            # Comparacion insensible a mayusculas: el dialogo de archivos de
+            # Windows puede devolver .CSV/.XLSX en mayusculas.
+            lower = filepath.lower()
+            if lower.endswith(".xlsx"):
                 df = pd.read_excel(filepath)
-            elif filepath.endswith(".csv"):
+            elif lower.endswith(".csv"):
                 df = pd.read_csv(filepath)
             else:
                 logger.error(f"Formato no soportado: {os.path.basename(filepath)}")
