@@ -70,18 +70,37 @@ class FileLoadWorker(QThread):
     loaded = pyqtSignal(str)
     failed = pyqtSignal(str)
 
-    def __init__(self, filepath, parent=None):
+    def __init__(self, filepath, parent=None, max_bytes=None):
         super().__init__(parent)
         self.filepath = filepath
+        self.max_bytes = max_bytes  # Unificado con config.max_file_mb
 
     def run(self):
         try:
             from src.core.ai_extractor import extract_text_from_file
-            text = extract_text_from_file(self.filepath)
+            text = extract_text_from_file(self.filepath, max_bytes=self.max_bytes)
             self.loaded.emit(text)
         except Exception as e:  # noqa: BLE001
             logger.error(f"Error leyendo archivo: {e}")
             self.failed.emit(str(e))
+
+
+class OllamaStatusWorker(QThread):
+    """Verifica Ollama fuera del hilo de UI: nunca congela la ventana."""
+
+    checked = pyqtSignal(bool, list)
+
+    def __init__(self, base_url: str, parent=None):
+        super().__init__(parent)
+        self.base_url = base_url
+
+    def run(self):
+        try:
+            ok, models = check_ollama(self.base_url, timeout=2.0)
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"Chequeo de Ollama fallo: {e}")
+            ok, models = False, []
+        self.checked.emit(ok, models)
 
 
 class AITab(QWidget):
@@ -94,10 +113,10 @@ class AITab(QWidget):
         self._last_result: ExtractionResult | None = None
         self._worker = None
         self._load_worker = None
-        self._checking_ollama = False
+        self._ollama_worker = None
         self._build_ui()
-        # El chequeo de Ollama es una llamada de red (hasta ~2s): se difiere al
-        # siguiente ciclo del event loop para que la ventana aparezca al instante.
+        # El chequeo de Ollama corre en un hilo: la ventana aparece al instante
+        # y ninguna latencia de red local congela la UI.
         QTimer.singleShot(0, self._refresh_ollama_status)
 
     # ── UI ──────────────────────────────────────────────────────────────
@@ -143,7 +162,11 @@ class AITab(QWidget):
 
         options = QHBoxLayout()
         self.chk_use_ai = QCheckBox("Usar IA local (Ollama)")
-        self.chk_use_ai.setChecked(bool(self.config.ai.use_ai))
+        # El switch maestro ai.enabled (config.yaml) manda: si desactiva la
+        # IA, el checkbox nace apagado y no hay arranque automatico.
+        self.chk_use_ai.setChecked(
+            bool(self.config.ai.use_ai and self.config.ai.enabled)
+        )
         options.addWidget(self.chk_use_ai)
 
         options.addWidget(QLabel("Modelo:"))
@@ -202,16 +225,26 @@ class AITab(QWidget):
     # ── Acciones de UI ─────────────────────────────────────────────────
 
     def _refresh_ollama_status(self):
-        if self._checking_ollama:
+        """Lanza el chequeo asincrono del estado de Ollama (si no hay uno en curso)."""
+        worker = self._ollama_worker
+        if worker is not None and worker.isRunning():
             return  # Ya hay una consulta en curso; evitar solapamiento
-        self._checking_ollama = True
-        try:
-            ok, models = check_ollama(self.config.ai.base_url, timeout=2.0)
-        except Exception:  # noqa: BLE001
-            ok, models = False, []
-        finally:
-            self._checking_ollama = False
+        worker = OllamaStatusWorker(self.config.ai.base_url)
+        worker.checked.connect(self._on_ollama_status)
+        # Limpiar la referencia ANTES de destruir el objeto C++ (orden garantizado
+        # por conexion): evita 'wrapped C/C++ object has been deleted' al reconsultar.
+        worker.finished.connect(self._on_ollama_check_finished)
+        worker.finished.connect(worker.deleteLater)
+        self.lbl_ollama.setText("Verificando Ollama...")
+        self.lbl_ollama.setStyleSheet("color: #888; font-style: italic;")
+        self._ollama_worker = worker
+        worker.start()
 
+    def _on_ollama_check_finished(self):
+        self._ollama_worker = None
+
+    def _on_ollama_status(self, ok: bool, models: list):
+        """Aplica el resultado del chequeo de Ollama a la UI."""
         if ok:
             # No reordenar el modelo configurado al inicio de la lista
             existing = [self.combo_model.itemText(i) for i in range(self.combo_model.count())]
@@ -253,7 +286,9 @@ class AITab(QWidget):
         # La lectura (OCR de imagenes, pypdf) corre en segundo plano
         self.btn_cargar.setEnabled(False)
         self.btn_cargar.setText("Leyendo archivo...")
-        self._load_worker = FileLoadWorker(filepath)
+        self._load_worker = FileLoadWorker(
+            filepath, max_bytes=self.config.max_file_mb * 1024 * 1024
+        )
         self._load_worker.loaded.connect(self._on_file_loaded)
         self._load_worker.failed.connect(self._on_file_load_failed)
         self._load_worker.start()
@@ -406,22 +441,30 @@ class AITab(QWidget):
         """Establece el callback que aplica el resultado al informe."""
         self._apply_callback = callback
 
-    def shutdown(self, timeout_ms: int = 30000):
+    def shutdown(self, extract_timeout_ms: int = 20000, load_timeout_ms: int = 5000):
         """Detiene los hilos de trabajo de forma cooperativa al cerrar la app.
 
         Primero pide la cancelacion (aborta una descarga de modelo en curso) y
-        luego espera un tiempo de gracia acotado. Si un hilo aun esta activo
-        (p. ej. el modelo esta generando), se registra una advertencia en lugar
-        de destruir el QThread a medias.
+        luego espera un tiempo de gracia acotado por hilo: la lectura de
+        archivos es rapida (5 s) y la extraccion puede estar generando con el
+        modelo (20 s). Si un hilo aun esta activo, se registra una advertencia
+        en lugar de destruir el QThread a medias.
         """
         for worker in (self._load_worker, self._worker):
             cancel = getattr(worker, "request_cancel", None)
             if worker is not None and cancel is not None:
                 cancel()
-        for name, worker in (("carga", self._load_worker), ("extraccion", self._worker)):
+        for name, worker, grace in (
+            ("carga", self._load_worker, load_timeout_ms),
+            ("extraccion", self._worker, extract_timeout_ms),
+        ):
             if worker is not None and worker.isRunning():
-                if not worker.wait(timeout_ms):
+                if not worker.wait(grace):
                     logger.warning(
                         f"Hilo de {name} sigue trabajando al cerrar la app "
                         "(posible generacion del modelo en curso)."
                     )
+        # El chequeo de estado de Ollama es corto: esperar su finalizacion
+        ollama_w = self._ollama_worker
+        if ollama_w is not None and ollama_w.isRunning():
+            ollama_w.wait(3000)

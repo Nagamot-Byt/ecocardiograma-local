@@ -72,10 +72,34 @@ def copy_to_user_input(filepath: str, user_input_dir: str) -> str:
     Copia un archivo (PDF/TXT/imagen) al directorio user_input,
     de modo que la sesion trabaje siempre sobre una copia local.
     Retorna la ruta de la copia.
+
+    Antifallo: si ya existe una copia con el mismo nombre pero de contenido
+    distinto (p. ej. dos informes llamados 'informe.pdf'), la nueva se guarda
+    con un sufijo incremental. Recargar el MISMO archivo es idempotente.
     """
     import shutil
 
     ensure_dir(user_input_dir)
     dest = os.path.join(user_input_dir, os.path.basename(filepath))
+    if (
+        os.path.exists(dest)
+        and os.path.abspath(dest) != os.path.abspath(filepath)
+        and not _files_equal(filepath, dest)
+    ):
+        base, ext = os.path.splitext(dest)
+        n = 1
+        while os.path.exists(dest) and not _files_equal(filepath, dest):
+            dest = f"{base}_{n}{ext}"
+            n += 1
     shutil.copy2(filepath, dest)
     return dest
+
+
+def _files_equal(a: str, b: str) -> bool:
+    """Compara dos archivos por contenido (False si alguno no existe)."""
+    import filecmp
+
+    try:
+        return filecmp.cmp(a, b, shallow=False)
+    except OSError:
+        return False
