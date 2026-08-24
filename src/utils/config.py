@@ -60,12 +60,23 @@ def get_data_root() -> str:
     Directorio de escritura para datos en tiempo de ejecucion
     (logs, user_input, output).
 
-    En modo congelado (PyInstaller) se usa %LOCALAPPDATA%\\EcocardiogramaLocal
-    para no depender de permisos de la carpeta de instalacion.
+    En modo congelado (PyInstaller) se usa el directorio de datos convencional
+    de cada sistema operativo, para no depender de permisos de la carpeta de
+    instalacion:
+      - Windows: %LOCALAPPDATA%\\EcocardiogramaLocal
+      - macOS:   ~/Library/Application Support/EcocardiogramaLocal
+      - Linux:   $XDG_DATA_HOME/EcocardiogramaLocal (~/.local/share por defecto)
     En desarrollo es la raiz del proyecto.
     """
     if getattr(sys, "frozen", False):
-        base = os.environ.get("LOCALAPPDATA") or os.path.expanduser("~")
+        if sys.platform == "darwin":
+            base = os.path.expanduser("~/Library/Application Support")
+        elif os.name == "nt":
+            base = os.environ.get("LOCALAPPDATA") or os.path.expanduser("~")
+        else:
+            base = os.environ.get("XDG_DATA_HOME") or os.path.expanduser(
+                "~/.local/share"
+            )
         return os.path.join(base, "EcocardiogramaLocal")
     return _get_project_root()
 

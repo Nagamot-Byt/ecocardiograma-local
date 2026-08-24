@@ -56,3 +56,23 @@ coll = COLLECT(
     upx_exclude=[],
     name='EcocardiogramaLocal',
 )
+
+# macOS: ademas del one-dir se genera el bundle .app firmable (sin notarizar).
+# El icono .icns se genera desde assets/app.ico con Pillow (multiplataforma).
+import sys as _sys
+
+if _sys.platform == 'darwin':
+    app = BUNDLE(
+        coll,
+        name='EcocardiogramaLocal.app',
+        icon='assets/app.icns',
+        bundle_identifier='com.ecocardiogramalocal.app',
+        info_plist={
+            'CFBundleName': 'Ecocardiograma Local',
+            'CFBundleDisplayName': 'Ecocardiograma Local',
+            'CFBundleShortVersionString': '1.0.5',
+            'CFBundleVersion': '1.0.5',
+            'NSHighResolutionCapable': True,
+            'LSMinimumSystemVersion': '11.0',
+        },
+    )
