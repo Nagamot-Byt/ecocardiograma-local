@@ -34,6 +34,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt pyinstaller pillow
 
+      - name: Runtime de Qt para tests headless (solo Linux)
+        if: matrix.id == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1 libgl1 libxkbcommon0
+
       - name: Ejecutar suite de tests (control de calidad previo al empaquetado)
         env:
           QT_QPA_PLATFORM: offscreen
