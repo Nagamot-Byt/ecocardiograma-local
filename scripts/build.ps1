@@ -8,7 +8,8 @@
       4. SHA-256 del instalador
       5. Actualiza la seccion "Ultima version" del README
 
-    Requisitos: venv con dependencias (requirements-dev.txt) e Inno Setup 6.
+    Requisitos: venv con requirements-dev.txt y requirements-build.txt
+    (PyInstaller fijado) ademas de Inno Setup 6.
 
     Uso:  powershell -ExecutionPolicy Bypass -File scripts\build.ps1
           powershell -ExecutionPolicy Bypass -File scripts\build.ps1 -SkipTests
@@ -28,9 +29,11 @@ if (-not (Test-Path -LiteralPath $py)) {
 }
 
 if (-not $SkipTests) {
-    Write-Host "==> 1/5 Lint y tests con cobertura" -ForegroundColor Cyan
-    & $py -m ruff check src tests
+    Write-Host "==> 1/5 Lint, version y tests con cobertura" -ForegroundColor Cyan
+    & $py -m ruff check src tests scripts
     if ($LASTEXITCODE -ne 0) { throw "Ruff encontro errores." }
+    & $py scripts\check_version.py
+    if ($LASTEXITCODE -ne 0) { throw "Version desalineada entre ficheros." }
     & $py -m pytest --cov=src --cov-report=term
     if ($LASTEXITCODE -ne 0) { throw "La suite de tests fallo." }
 }

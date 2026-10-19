@@ -32,7 +32,13 @@ jobs:
       - name: Instalar dependencias
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt pyinstaller pillow
+          pip install -r requirements-dev.txt -r requirements-build.txt
+
+      - name: Lint (ruff)
+        run: ruff check src tests scripts
+
+      - name: Verificar sincronia de version
+        run: python scripts/check_version.py
 
       - name: Runtime de Qt para tests headless (solo Linux)
         if: matrix.id == 'linux'
@@ -45,7 +51,6 @@ jobs:
           QT_QPA_PLATFORM: offscreen
         shell: bash
         run: |
-          pip install -r requirements-dev.txt
           pytest -q
 
       # ---------------------------------------------------------------------
@@ -54,6 +59,11 @@ jobs:
       - name: Construir ejecutable (PyInstaller)
         if: matrix.id == 'windows'
         run: pyinstaller ecocardiograma.spec --noconfirm --clean
+
+      - name: Smoke test del binario (Windows)
+        if: matrix.id == 'windows'
+        shell: bash
+        run: bash scripts/smoke_test.sh dist/EcocardiogramaLocal/EcocardiogramaLocal.exe
 
       - name: Instalar Inno Setup 6
         if: matrix.id == 'windows'
@@ -81,11 +91,20 @@ jobs:
         if: matrix.id == 'macos'
         run: pyinstaller ecocardiograma.spec --noconfirm --clean
 
+      - name: Smoke test del binario (macOS)
+        if: matrix.id == 'macos'
+        shell: bash
+        run: bash scripts/smoke_test.sh dist/EcocardiogramaLocal/EcocardiogramaLocal
+
       - name: Empaquetar .app (macOS)
         if: matrix.id == 'macos'
         run: |
           cd dist
-          # xattr -cr evita el bloqueo de Gatekeeper en equipos del cliente
+          # xattr -cr: limpia metadatos de quarantine locales; en la copia que
+          # descarga el cliente via navegador, Gatekeeper sigue exigiendo
+          # clic derecho > Abrir (el .app no esta notarizado sin certificado
+          # Apple Developer ID).
+          xattr -cr EcocardiogramaLocal.app || true
           ditto -c -k --keepParent EcocardiogramaLocal.app EcocardiogramaLocal-macos.zip
           shasum -a 256 EcocardiogramaLocal-macos.zip > SHA256SUMS-macos.txt
 
@@ -96,6 +115,11 @@ jobs:
         if: matrix.id == 'linux'
         run: pyinstaller ecocardiograma.spec --noconfirm --clean
 
+      - name: Smoke test del binario (Linux)
+        if: matrix.id == 'linux'
+        shell: bash
+        run: bash scripts/smoke_test.sh dist/EcocardiogramaLocal/EcocardiogramaLocal
+
       - name: Empaquetar portable (Linux)
         if: matrix.id == 'linux'
         run: |
@@ -105,6 +129,23 @@ jobs:
           exec "$DIR/EcocardiogramaLocal" "$@"
           EOS
           chmod +x dist/EcocardiogramaLocal/lanzar.sh
+          cat > dist/EcocardiogramaLocal/install.sh <<'EIS'
+          #!/bin/bash
+          # Anhade Ecocardiograma Local al menu de aplicaciones del usuario.
+          set -e
+          DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+          APPS="$HOME/.local/share/applications"
+          ICONS="$HOME/.local/share/icons/hicolor/256x256/apps"
+          mkdir -p "$APPS" "$ICONS"
+          cp "$DIR/ecocardiogramalocal.png" "$ICONS/ecocardiogramalocal.png"
+          # Exec con ruta absoluta: el binario no esta en PATH
+          sed "s|^Exec=.*|Exec=$DIR/EcocardiogramaLocal|" \
+            "$DIR/ecocardiogramalocal.desktop" > "$APPS/ecocardiogramalocal.desktop"
+          command -v update-desktop-database >/dev/null 2>&1 && \
+            update-desktop-database "$APPS" || true
+          echo "Anadido al menu de aplicaciones: Ecocardiograma Local"
+          EIS
+          chmod +x dist/EcocardiogramaLocal/install.sh
           cat > dist/EcocardiogramaLocal/ecocardiogramalocal.desktop <<'EOD'
           [Desktop Entry]
           Type=Application
@@ -116,6 +157,28 @@ jobs:
           Categories=MedicalSoftware;Science;
           EOD
           cp assets/app_256.png dist/EcocardiogramaLocal/ecocardiogramalocal.png
+          cat > dist/EcocardiogramaLocal/LEEME_LINUX.txt <<'EOT'
+          Ecocardiograma Local - Linux (portable)
+
+          1. REQUISITOS DEL SISTEMA
+             El binario trae PyQt6/pandas empaquetados, pero necesita fuentes
+             de letra y los runtime graficos de Qt. En Debian/Ubuntu:
+               sudo apt install fontconfig fonts-dejavu-core libegl1 libgl1 libxkbcommon0
+             Sin fuentes instaladas el informe PDF sale con texto vacio
+             (el motor QPrinter usa las fuentes del sistema).
+
+          2. ABRIR LA APLICACION
+               ./lanzar.sh
+
+          3. ICONO EN EL MENU DE APLICACIONES (opcional)
+               ./install.sh
+             (copia el acceso directo en ~/.local/share/applications)
+
+          4. IA LOCAL (OPCIONAL)
+             Instale Ollama desde https://ollama.com si quiere la extraccion
+             automatica con IA; sin ella la aplicacion funciona igual con
+             extraccion por reglas.
+          EOT
           cd dist
           tar czf EcocardiogramaLocal-linux-x64.tar.gz EcocardiogramaLocal
           sha256sum EcocardiogramaLocal-linux-x64.tar.gz > SHA256SUMS-linux.txt

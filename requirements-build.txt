@@ -1,0 +1,6 @@
+# Herramientas de empaquetado. Versiones fijadas para que un release de
+# dentro de meses se compile con el mismo PyInstaller que el actual.
+# Usado por .github/workflows/release.yml (y disponible para
+# scripts/build.ps1 en Windows: pip install -r requirements-build.txt).
+pyinstaller==6.22.3
+pyinstaller-hooks-contrib==2026.8

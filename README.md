@@ -15,8 +15,10 @@ basados en las guias de la **Sociedad Colombiana de Cardiologia (SCC/LATAM)** y 
   Tesseract) y extrae parametros, hallazgos visuales e impresion clinica.
 - **Ingreso manual de hallazgos visuales**: Insuficiencias valvulares, contractilidad,
   derrame pericardico, etc.
-- **Generacion de informes PDF**: Renderizado via Jinja2 + WeasyPrint (Linux/Mac)
-  o QPrinter de PyQt6 (Windows, sin dependencias externas).
+- **Generacion de informes PDF**: HTML con Jinja2 y PDF con QPrinter (PyQt6) en
+  las tres plataformas, sin dependencias de sistema adicionales. WeasyPrint
+  existe como extra opcional (`pip install .[pdf]`) para desarrollo en Linux/Mac,
+  pero los binarios oficiales usan QPrinter (es el motor validado en 1.0.5).
 - **Borrado seguro**: Al cerrar sesion, los archivos temporales (HTML/PDF internos)
   se sobreescriben y eliminan. Los informes exportados por el usuario se conservan.
 - **Trazabilidad**: Registro de operaciones en archivo log local con rotacion diaria.
@@ -33,15 +35,38 @@ basados en las guias de la **Sociedad Colombiana de Cardiologia (SCC/LATAM)** y 
 
 ## Como abrir la aplicacion
 
-La forma mas facil en Windows es **doble clic en `AbrirEcocardiograma.cmd`**
-(raiz del proyecto): lanza la aplicacion compilada en
-`dist\EcocardiogramaLocal\EcocardiogramaLocal.exe`.
+### Windows
+
+**Doble clic en `AbrirEcocardiograma.cmd`** (raiz del proyecto): lanza la
+aplicacion compilada en `dist\EcocardiogramaLocal\EcocardiogramaLocal.exe`.
 
 > **Nota sobre carpetas:** `dist\EcocardiogramaLocal\EcocardiogramaLocal.exe`
 > es el ejecutable real. La carpeta `dist\installer\` contiene los instaladores
-> (use siempre el de version mas alta, p. ej. `EcocardiogramaLocal-Setup-1.0.4.exe`).
+> (use siempre el de version mas alta, p. ej. `EcocardiogramaLocal-Setup-1.0.5.exe`).
 > No ejecute archivos dentro de `build\` ni otras subcarpetas: son artefactos
 > internos del empaquetado y no abren la aplicacion.
+
+### macOS
+
+Abra `dist/EcocardiogramaLocal.app`. El `.app` **no esta notarizado** (requiere
+certificado Apple Developer ID), asi que Gatekeeper lo bloquea la primera vez:
+
+- Clic derecho sobre el icono → **Abrir** → **Abrir** en el dialogo, o
+- `xattr -cr /ruta/a/EcocardiogramaLocal.app` desde Terminal.
+
+### Linux
+
+El portable (`EcocardiogramaLocal-linux-x64.tar.gz`) incluye `LEEME_LINUX.txt`:
+
+```bash
+tar xzf EcocardiogramaLocal-linux-x64.tar.gz
+cd EcocardiogramaLocal
+./lanzar.sh          # abre la aplicacion
+./install.sh         # opcional: anhade el icono al menu de aplicaciones
+```
+
+Requiere fuentes TrueType y fontconfig (p. ej. `fonts-dejavu-core`); sin
+fuentes el PDF sale con el texto vacio.
 
 ## Instalacion
 
@@ -76,6 +101,34 @@ descargar e instalar Ollama silenciosamente para habilitar la IA local.
 > **Datos en runtime:** la aplicacion instalada es de solo lectura en su carpeta
 > de instalacion. Los datos de la sesion (logs, archivos de entrada y PDF/HTML
 > temporales) se guardan en `%LOCALAPPDATA%\EcocardiogramaLocal`.
+
+## Compilar desde codigo (Windows / macOS / Linux)
+
+```bash
+# 1. Dependencias de desarrollo y de empaquetado (versiones fijadas)
+pip install -r requirements-dev.txt -r requirements-build.txt
+
+# 2. Control de calidad (lo mismo que CI)
+ruff check src tests scripts
+python scripts/check_version.py          # version sincronizada en 7 ficheros
+pytest                                   # 353 tests, cobertura >= 90%
+
+# 3. Binario portable one-dir (misma spec en las tres plataformas)
+pyinstaller ecocardiograma.spec --noconfirm --clean
+
+# 4. Smoke test: comprueba que el binario arranca y no muere
+bash scripts/smoke_test.sh dist/EcocardiogramaLocal/EcocardiogramaLocal
+```
+
+- **Windows**: `powershell -ExecutionPolicy Bypass -File scripts\build.ps1`
+  encadena lint + tests + PyInstaller + Inno Setup + SHA-256.
+- **macOS**: el spec genera ademas el bundle `dist/EcocardiogramaLocal.app`.
+- **Linux**: el paso de release anhade `lanzar.sh`, `install.sh`,
+  `ecocardiogramalocal.desktop` y `LEEME_LINUX.txt` antes de crear el `.tar.gz`.
+
+Los releases oficiales los publica el workflow `.github/workflows/release.yml`
+al etiquetar un tag `v*` (matrix Windows/macOS/Linux con lint, tests, version
+y smoke test antes de empaquetar).
 
 ## Uso
 
