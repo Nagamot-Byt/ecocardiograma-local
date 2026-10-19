@@ -159,3 +159,13 @@ Cambios: 6 archivos modificados (`ai_extractor.py`, `main_window.py`, `ai_tab.py
 4. **Baja:** `_pull_model` sin deadline máximo (solo cancelación cooperativa) — aceptable con P5 y cancelación.
 5. **Baja:** `param_registry.get_field` lineal (62% cobertura) — trivialmente cacheable.
 6. **Baja:** stylesheet de statusBar persistente entre mensajes (cosmético).
+
+### 8.1 Carencias UI/UX (estado tras P2)
+
+Registradas al revisar la integración de componentes tras el bloque P2 (commit `e26eabc`). Dos coinciden con puntos de este backlog (se enlazan, no se repiten); tres son nuevas.
+
+1. **Media:** `_on_generate_report` corre sincrónico en el hilo de UI (`src/gui/main_window.py:829`) — sin cursor de espera ni botón deshabilitado durante el render: posible "cuelgue" percibido. *Coincide con el punto 1.*
+2. **Media:** sin progreso gráfico (`QProgressBar`): la extracción de la pestaña IA solo cambia texto ("Extrayendo datos...") en `lbl_resultado`.
+3. **Baja:** los grises `#888`/`#777` de `ai_tab` (`lbl_ollama`, `lbl_pista`) están inline y no responden al modo oscuro (contraste bajo sobre `#2b2b2b`).
+4. **Baja:** los colores del statusbar persisten entre mensajes (cosmético). *Coincide con el punto 6.*
+5. **Baja:** accesibilidad parcial: solo 6 `setAccessibleName` (header, sexo, validar) frente a decenas de controles interactivos; sin `setStatusTip` en ninguna parte.
