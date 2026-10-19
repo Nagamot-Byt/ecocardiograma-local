@@ -11,11 +11,15 @@ from types import SimpleNamespace
 
 import pytest
 
-from PyQt6.QtWidgets import QApplication, QMessageBox, QFileDialog, QInputDialog
+from PyQt6.QtWidgets import (
+    QApplication, QMessageBox, QFileDialog, QInputDialog, QFrame, QLabel,
+)
 from PyQt6.QtCore import QSettings
 
 from src.core.ai_extractor import ExtractionResult
-from src.gui.main_window import MainWindow, UpdateCheckWorker, get_guide_name
+from src.gui.main_window import (
+    MainWindow, UpdateCheckWorker, ValidarButton, get_guide_name,
+)
 from src.gui.numeric_tab import NumericTab
 from src.gui.report_preview import ReportPreview
 from src.gui.ai_tab import ExtractWorker, FileLoadWorker, OllamaStatusWorker
@@ -247,6 +251,101 @@ class TestMainWindowAyudaYTema:
             w2.close()
         finally:
             settings.setValue("dark_mode", False)
+
+    # ── P2: tema, objectNames, cancelacion de worker y QSettings ──────────
+
+    def test_tema_claro_aplica_hoja_base(self, window):
+        hoja = window.styleSheet()
+        assert "QFrame#header" in hoja
+        assert "QPushButton#primary" in hoja
+        assert "QStatusBar" in hoja
+        assert "2b2b2b" not in hoja
+
+    def test_tema_oscuro_cubre_contenedores(self, window):
+        window._on_toggle_theme(True)
+        try:
+            hoja = window.styleSheet()
+            assert "2b2b2b" in hoja
+            for selector in (
+                "QGroupBox", "QTabWidget::pane", "QScrollBar:vertical",
+                "QLineEdit", "QHeaderView::section", "QMenu", "QToolTip",
+            ):
+                assert selector in hoja
+            # Los focus del modo oscuro no usan el azul claro del modo claro
+            assert "QLineEdit:focus { border: 2px solid #2471a3" in hoja
+        finally:
+            window._on_toggle_theme(False)
+        assert "QLineEdit:focus { border: 2px solid #1a5276" in window.styleSheet()
+
+    def test_objectnames_tematizados(self, window):
+        assert window.findChild(QFrame, "header") is not None
+        assert window.findChild(QLabel, "title") is not None
+        assert window.findChild(QLabel, "version") is not None
+        assert window.findChild(QLabel, "patient_id") is window.lbl_id
+        assert window.numeric_tab.live_status.objectName() == "live_status"
+        assert window.report_tab.lbl_estado.objectName() == "estado"
+
+    def test_botones_de_pestanas_usan_clases_del_tema(self, window):
+        botones = {
+            window.ai_tab.btn_extraer: "primary",
+            window.ai_tab.btn_aplicar: "success",
+            window.report_tab.btn_generar: "primary",
+            window.report_tab.btn_exportar_pdf: "success",
+        }
+        for boton, clase in botones.items():
+            assert boton.objectName() == clase
+            assert boton.styleSheet() == ""
+
+    def test_btn_validar_subclase_sin_parche(self, window):
+        assert isinstance(window.btn_validar, ValidarButton)
+        # Ya no se parchean metodos sobre la instancia
+        assert "enterEvent" not in vars(window.btn_validar)
+        assert "leaveEvent" not in vars(window.btn_validar)
+        assert window.btn_validar_anim.targetObject() is window.btn_validar
+        window.btn_validar.enterEvent(None)
+        assert "#e67e22" in window.btn_validar_anim.endValue()
+        window.btn_validar.leaveEvent(None)
+        assert "#f39c12" in window.btn_validar_anim.endValue()
+        window.btn_validar_anim.stop()
+
+    def test_update_worker_cancelado_no_emite(self, monkeypatch):
+        monkeypatch.setattr(
+            "src.gui.main_window.check_for_updates",
+            lambda **k: {"disponible": True, "version_remota": "99.0.0"},
+        )
+        resultados = []
+        worker = UpdateCheckWorker("owner/repo", "v1.0.0")
+        worker.finished_check.connect(resultados.append)
+        worker.request_cancel()
+        worker.run()
+        assert resultados == []
+
+    def test_close_event_cancela_worker_de_updates(self, window):
+        class FakeSignal:
+            def disconnect(self):
+                pass
+
+        class FakeWorker:
+            def __init__(self):
+                self.cancelado = False
+                self.finished_check = FakeSignal()
+                self.finished = FakeSignal()
+
+            def request_cancel(self):
+                self.cancelado = True
+
+            def isRunning(self):
+                return False
+
+        fake = FakeWorker()
+        window._update_worker = fake
+        window.closeEvent(SimpleNamespace(accept=lambda: None))
+        assert fake.cancelado is True
+
+    def test_qsettings_de_tests_aislado_de_la_config_real(self):
+        ruta = QSettings().fileName()
+        assert "qsettings" in ruta
+        assert os.path.expanduser("~/.config") not in ruta
 
     def test_init_guia_por_archivos(self, tmp_path, monkeypatch, qtbot, dialogs):
         from src.utils import config as config_mod

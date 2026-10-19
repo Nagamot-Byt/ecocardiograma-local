@@ -40,6 +40,7 @@ QMainWindow {
 }
 QFrame#header {
     background: #1a5276;
+    padding: 10px;
     border-radius: 6px;
 }
 QLabel#title {
@@ -51,13 +52,41 @@ QLabel#version {
     color: #aed6f1;
     font-size: 9pt;
 }
+QLabel#sexo {
+    color: white;
+    font-size: 11pt;
+}
+QLabel#patient_id {
+    color: #aed6f1;
+    font-size: 9pt;
+}
+QLabel#live_status {
+    font-size: 10pt;
+    color: #555;
+}
+QLabel#estado {
+    color: #555;
+    font-style: italic;
+}
 QLabel {
     color: #333;
     font-size: 11pt;
 }
+QStatusBar {
+    font-size: 10pt;
+}
 QPushButton {
     font-size: 11pt;
     border-radius: 4px;
+}
+QPushButton:disabled {
+    background-color: #b0b7bd;
+    color: white;
+}
+QPushButton#primary:disabled, QPushButton#success:disabled,
+QPushButton#warning:disabled, QPushButton#danger:disabled {
+    background-color: #b0b7bd;
+    color: white;
 }
 QPushButton#primary {
     background-color: #1a5276;
@@ -105,38 +134,201 @@ QDoubleSpinBox {
     font-size: 11pt;
     min-width: 120px;
 }
-QLiveStatus {
-    font-size: 10pt;
-}
 """
 
-# Estilos de focus states: SIEMPRE se aplican (claro y oscuro)
+# Estilos de focus states del modo claro
 FOCUS_STYLESHEET = (
     "QLineEdit:focus { border: 2px solid #1a5276; background-color: #e8f0fe; } "
     "QDoubleSpinBox:focus { border: 2px solid #1a5276; background-color: #e8f0fe; } "
     "QComboBox:focus { border: 2px solid #1a5276; background-color: #e8f0fe; }"
 )
 
-# Capa extra del modo oscuro (se combina con FOCUS_STYLESHEET)
-DARK_STYLESHEET = (
-    "QMainWindow { background-color: #2b2b2b; } "
-    "QLabel { color: #f0f0f0; } "
-    "QPushButton { background-color: #3d3d3d; color: white; } "
-    "QPushButton:focus { border: 2px solid #1a5276; background-color: #4a4a4a; } "
-    "QDoubleSpinBox:focus { border: 2px solid #1a5276; background-color: #4a4a4a; } "
-    "QComboBox:focus { border: 2px solid #1a5276; background-color: #4a4a4a; }"
+# Focus states del modo oscuro: fondo oscuro, nunca el azul claro
+FOCUS_DARK_STYLESHEET = (
+    "QLineEdit:focus { border: 2px solid #2471a3; background-color: #1e1e1e; } "
+    "QDoubleSpinBox:focus { border: 2px solid #2471a3; background-color: #1e1e1e; } "
+    "QComboBox:focus { border: 2px solid #2471a3; background-color: #1e1e1e; }"
 )
+
+# Capa del modo oscuro: tema general + contenedores. Se concatena DESPUES de
+# STYLESHEET, asi que gana en las declaraciones en conflicto de igual
+# especificidad. Los colores de marca (#primary, #header...) se conservan.
+DARK_STYLESHEET = """
+QMainWindow {
+    background-color: #2b2b2b;
+}
+QLabel {
+    color: #f0f0f0;
+}
+QLabel#live_status {
+    color: #aaaaaa;
+}
+QLabel#estado {
+    color: #aaaaaa;
+}
+QPushButton {
+    background-color: #3d3d3d;
+    color: white;
+}
+QPushButton:focus {
+    border: 2px solid #1a5276;
+    background-color: #4a4a4a;
+}
+QPushButton:disabled,
+QPushButton#primary:disabled, QPushButton#success:disabled,
+QPushButton#warning:disabled, QPushButton#danger:disabled {
+    background-color: #4a4a4a;
+    color: #9a9a9a;
+}
+QCheckBox, QRadioButton {
+    color: #f0f0f0;
+}
+QGroupBox {
+    color: #f0f0f0;
+    border: 1px solid #4a4a4a;
+    margin-top: 12px;
+    padding-top: 16px;
+}
+QGroupBox::title {
+    color: #aed6f1;
+    subcontrol-origin: margin;
+    left: 8px;
+    padding: 0px 4px;
+}
+QMenuBar {
+    background-color: #2b2b2b;
+    color: #f0f0f0;
+}
+QMenuBar::item:selected {
+    background-color: #1a5276;
+}
+QMenu {
+    background-color: #333333;
+    color: #f0f0f0;
+    border: 1px solid #4a4a4a;
+}
+QMenu::item:selected {
+    background-color: #1a5276;
+}
+QMenu::separator {
+    height: 1px;
+    background: #4a4a4a;
+}
+QToolTip {
+    background-color: #333333;
+    color: #f0f0f0;
+    border: 1px solid #4a4a4a;
+}
+QStatusBar {
+    color: #f0f0f0;
+}
+QLineEdit, QTextEdit, QTextBrowser, QPlainTextEdit {
+    background-color: #1e1e1e;
+    color: #f0f0f0;
+    border: 1px solid #4a4a4a;
+}
+QSpinBox, QDoubleSpinBox {
+    background-color: #1e1e1e;
+    color: #f0f0f0;
+    border: 1px solid #4a4a4a;
+    border-radius: 3px;
+}
+QComboBox {
+    background-color: #1e1e1e;
+    color: #f0f0f0;
+    border: 1px solid #4a4a4a;
+    border-radius: 3px;
+}
+QComboBox QAbstractItemView {
+    background-color: #1e1e1e;
+    color: #f0f0f0;
+    selection-background-color: #1a5276;
+    selection-color: white;
+}
+QTabWidget::pane {
+    border: 1px solid #4a4a4a;
+    background-color: #2b2b2b;
+}
+QTabBar::tab {
+    background-color: #3d3d3d;
+    color: #f0f0f0;
+}
+QTabBar::tab:selected {
+    background-color: #1a5276;
+    color: white;
+}
+QTabBar::tab:!selected {
+    color: #c0c0c0;
+}
+QTableWidget, QTableView, QTreeView, QListView {
+    background-color: #1e1e1e;
+    color: #f0f0f0;
+    gridline-color: #4a4a4a;
+    alternate-background-color: #262626;
+}
+QHeaderView::section {
+    background-color: #3d3d3d;
+    color: #f0f0f0;
+    border: 1px solid #4a4a4a;
+    padding: 4px;
+}
+QAbstractItemView::item:selected {
+    background-color: #1a5276;
+    color: white;
+}
+QScrollBar:vertical {
+    background-color: #2b2b2b;
+    width: 12px;
+    margin: 0;
+}
+QScrollBar::handle:vertical {
+    background-color: #555555;
+    border-radius: 5px;
+    min-height: 24px;
+}
+QScrollBar:horizontal {
+    background-color: #2b2b2b;
+    height: 12px;
+    margin: 0;
+}
+QScrollBar::handle:horizontal {
+    background-color: #555555;
+    border-radius: 5px;
+    min-width: 24px;
+}
+QScrollBar::add-line, QScrollBar::sub-line,
+QScrollBar::add-page, QScrollBar::sub-page {
+    background: none;
+}
+QMessageBox {
+    background-color: #2b2b2b;
+}
+QSplitter::handle {
+    background-color: #4a4a4a;
+}
+"""
 
 class UpdateCheckWorker(QThread):
     """Consulta GitHub Releases en un hilo para no congelar la UI."""
 
     finished_check = pyqtSignal(dict)
 
-    def __init__(self, repo: str, current_version: str, timeout: float = 8.0):
+    def __init__(self, repo: str, current_version: str, timeout: float = 4.0):
         super().__init__()
         self.repo = repo
         self.current_version = current_version
         self.timeout = timeout
+        self._cancelado = False
+
+    def request_cancel(self):
+        """Pide no emitir el resultado (cancelacion cooperativa).
+
+        No interrumpe la peticion en vuelo (urllib no lo permite), pero el
+        hilo no emite la senal si la ventana ya empezo a cerrarse. Con el
+        timeout corto, la espera de closeEvent cubre toda la vida util del
+        hilo y terminate() queda como ultimo recurso inalcanzable.
+        """
+        self._cancelado = True
 
     def run(self):
         resultado = check_for_updates(
@@ -144,7 +336,8 @@ class UpdateCheckWorker(QThread):
             repo=self.repo,
             timeout=self.timeout,
         )
-        self.finished_check.emit(resultado)
+        if not self._cancelado:
+            self.finished_check.emit(resultado)
 
 
 def get_guide_name(guide: str) -> str:
@@ -152,6 +345,46 @@ def get_guide_name(guide: str) -> str:
     if guide == "ase":
         return "Guías ASE 2023"
     return GUIDE_NAME
+
+
+class ValidarButton(QPushButton):
+    """Boton 'Validar' con transicion animada al entrar/salir el raton.
+
+    La animacion vive en enterEvent/leaveEvent reales de la subclase.
+    Antes se parcheaban esos metodos sobre la instancia (btn.enterEvent =
+    lambda ...), algo que Qt no invoca de forma fiable y que oculta el
+    comportamiento a cualquier test o lector del codigo.
+    """
+
+    def __init__(self, text: str = "", parent=None):
+        super().__init__(text, parent)
+        self.anim = QPropertyAnimation(self, b"styleSheet", self)
+        self.anim.setDuration(150)
+        self.anim.setEasingCurve(QEasingCurve.Type.OutCubic)
+        self._style_normal = ""
+        self._style_hover = ""
+
+    def set_animation_styles(self, normal: str, hover: str) -> None:
+        """Define los estilos normal/hover y aplica el normal."""
+        self._style_normal = normal
+        self._style_hover = hover
+        self.setStyleSheet(normal)
+
+    def _fade_to(self, style: str) -> None:
+        if not style:
+            return
+        self.anim.stop()
+        self.anim.setStartValue(self.styleSheet())
+        self.anim.setEndValue(style)
+        self.anim.start()
+
+    def enterEvent(self, event):
+        super().enterEvent(event)
+        self._fade_to(self._style_hover)
+
+    def leaveEvent(self, event):
+        super().leaveEvent(event)
+        self._fade_to(self._style_normal)
 
 
 class MainWindow(QMainWindow):
@@ -300,36 +533,29 @@ class MainWindow(QMainWindow):
         main_layout = QVBoxLayout(central)
         main_layout.setContentsMargins(8, 8, 8, 8)
 
-        # Header
+        # Header (estilos en STYLESHEET via objectName)
         header = QFrame()
         header.setFrameShape(QFrame.Shape.StyledPanel)
-        header.setStyleSheet(
-            "QFrame { background: #1a5276; padding: 10px; border-radius: 6px; }"
-        )
+        header.setObjectName("header")
         header_layout = QHBoxLayout(header)
 
         title_lbl = QLabel("ECOCARDIOGRAMA LOCAL")
-        title_lbl.setStyleSheet(
-            "color: white; font-size: 16pt; font-weight: bold;"
-        )
+        title_lbl.setObjectName("title")
         header_layout.addWidget(title_lbl)
 
         ver_lbl = QLabel(f"v{APP_VERSION}")
-        ver_lbl.setStyleSheet("color: #aed6f1; font-size: 9pt;")
+        ver_lbl.setObjectName("version")
         header_layout.addWidget(ver_lbl)
 
         header_layout.addStretch()
 
         # Selector de sexo
         sexo_lbl = QLabel("Sexo del Paciente:")
-        sexo_lbl.setStyleSheet("color: white; font-size: 11pt;")
+        sexo_lbl.setObjectName("sexo")
         header_layout.addWidget(sexo_lbl)
 
         self.combo_sexo = QComboBox()
         self.combo_sexo.addItems(["Masculino", "Femenino"])
-        self.combo_sexo.setStyleSheet(
-            "QComboBox { padding: 4px 10px; font-size: 11pt; min-width: 120px; }"
-        )
         self.combo_sexo.setAccessibleName("Sexo del Paciente")
         self.combo_sexo.setAccessibleDescription("Seleccione el sexo del paciente para rangos de validacion")
         self.combo_sexo.setToolTip("Seleccionar sexo del paciente para rangos de validacion")
@@ -337,58 +563,35 @@ class MainWindow(QMainWindow):
 
         # ID del paciente
         id_lbl = QLabel(f"ID: {self.patient.id}")
-        id_lbl.setStyleSheet("color: #aed6f1; font-size: 9pt;")
+        id_lbl.setObjectName("patient_id")
         header_layout.addWidget(id_lbl)
         self.lbl_id = id_lbl
 
         header_layout.addStretch()
 
-        btn_validar = QPushButton("Validar Datos")
-        btn_validar.setStyleSheet(
+        btn_validar = ValidarButton("Validar Datos")
+        btn_validar.set_animation_styles(
             "QPushButton { background: #f39c12; color: white; "
             "padding: 6px 16px; font-weight: bold; border-radius: 4px; } "
             "QPushButton:hover { background: #e67e22; } "
-            "QPushButton:pressed { background: #d35400; }"
+            "QPushButton:pressed { background: #d35400; }",
+            "QPushButton { background: #e67e22; color: white; "
+            "padding: 6px 16px; font-weight: bold; border-radius: 4px; }",
         )
         btn_validar.setCursor(Qt.CursorShape.PointingHandCursor)
         btn_validar.setAccessibleName("Validar Datos")
         btn_validar.setAccessibleDescription("Valida los datos actuales contra los rangos de referencia")
         btn_validar.setToolTip("Valida los datos actuales contra los rangos de referencia (F5)")
-        # Animaciones para micro-interacciones
-        self.btn_validar_anim = QPropertyAnimation(btn_validar, b"styleSheet")
-        self.btn_validar_anim.setDuration(150)
-        self.btn_validar_anim.setEasingCurve(QEasingCurve.Type.OutCubic)
-        
-        def on_enter():
-            self.btn_validar_anim.setStartValue(btn_validar.styleSheet())
-            self.btn_validar_anim.setEndValue(
-                "QPushButton { background: #e67e22; color: white; "
-                "padding: 6px 16px; font-weight: bold; border-radius: 4px; }"
-            )
-            self.btn_validar_anim.start()
-        
-        def on_leave():
-            self.btn_validar_anim.setStartValue(btn_validar.styleSheet())
-            self.btn_validar_anim.setEndValue(
-                "QPushButton { background: #f39c12; color: white; "
-                "padding: 6px 16px; font-weight: bold; border-radius: 4px; }"
-            )
-            self.btn_validar_anim.start()
-        
-        btn_validar.enterEvent = lambda e: on_enter()
-        btn_validar.leaveEvent = lambda e: on_leave()
-        
+        # Alias de la animacion (referencia historica usada en tests/UI)
+        self.btn_validar_anim = btn_validar.anim
+
         header_layout.addWidget(btn_validar)
         self.btn_validar = btn_validar
 
         main_layout.addWidget(header)
 
-        # Tabs principales
+        # Tabs principales (estilos de tab en STYLESHEET)
         self.tabs = QTabWidget()
-        self.tabs.setStyleSheet(
-            "QTabBar::tab { padding: 8px 20px; font-size: 11pt; }"
-            "QTabBar::tab:selected { font-weight: bold; }"
-        )
 
         # Tab 1: Datos Numericos
         self.numeric_tab = NumericTab()
@@ -418,7 +621,6 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(
             "Listo. Extraiga los datos con IA o ingrese los datos manualmente y valide."
         )
-        self.statusBar().setStyleSheet("font-size: 10pt;")
 
     def _connect_signals(self):
         """Conecta las senales de la UI con los metodos correspondientes."""
@@ -474,11 +676,13 @@ class MainWindow(QMainWindow):
             )
 
     def _apply_theme(self):
-        """Aplica el stylesheet combinado (focus states + modo oscuro si aplica)."""
-        partes = []
+        """Aplica la hoja combinada: base + modo oscuro (si aplica) + focus."""
+        partes = [STYLESHEET]
         if self.dark_mode:
             partes.append(DARK_STYLESHEET)
-        partes.append(FOCUS_STYLESHEET)
+            partes.append(FOCUS_DARK_STYLESHEET)
+        else:
+            partes.append(FOCUS_STYLESHEET)
         self.setStyleSheet(" ".join(partes))
         if hasattr(self, "act_tema"):
             self.act_tema.setText("Modo Claro" if self.dark_mode else "Modo Oscuro")
@@ -871,6 +1075,11 @@ class MainWindow(QMainWindow):
         try:
             worker = getattr(self, "_update_worker", None)
             if worker is not None:
+                # Cancelacion cooperativa: el hilo no emitira el resultado.
+                # (Defensivo con getattr: dobles de test pueden no tenerlo.)
+                cancelar = getattr(worker, "request_cancel", None)
+                if callable(cancelar):
+                    cancelar()
                 # Desconectar ANTES de esperar: si la senal 'finished_check'
                 # se entregara despues de destruir la ventana, el slot
                 # accederia a un widget ya eliminado (RuntimeError de Qt).
@@ -880,7 +1089,9 @@ class MainWindow(QMainWindow):
                     except (TypeError, RuntimeError):
                         pass
                 if worker.isRunning():
-                    if not worker.wait(2000):
+                    # La peticion HTTP tiene timeout corto: esta espera cubre
+                    # toda su vida util en condiciones normales.
+                    if not worker.wait(4000):
                         # Ultimo recurso: Qt aborta el proceso si el QThread
                         # sigue corriendo al destruir la ventana; se aborta el
                         # hilo (proceso a punto de salir) antes que dejar crashear.

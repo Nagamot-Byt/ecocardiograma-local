@@ -97,7 +97,7 @@ class NumericTab(QWidget):
 
         # Estado en vivo de la validacion (se actualiza al editar cada campo)
         self.live_status = QLabel("")
-        self.live_status.setStyleSheet("font-size: 10pt; color: #555;")
+        self.live_status.setObjectName("live_status")
         layout.addWidget(self.live_status)
         layout.addStretch()
 

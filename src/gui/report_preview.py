@@ -33,20 +33,12 @@ class ReportPreview(QWidget):
         toolbar = QHBoxLayout()
 
         self.btn_generar = QPushButton("Generar Informe")
-        self.btn_generar.setStyleSheet(
-            "QPushButton { background-color: #1a5276; color: white; "
-            "padding: 8px 20px; font-weight: bold; border-radius: 4px; }"
-            "QPushButton:hover { background-color: #2471a3; }"
-        )
+        self.btn_generar.setObjectName("primary")
         toolbar.addWidget(self.btn_generar)
 
         self.btn_exportar_pdf = QPushButton("Exportar PDF")
         self.btn_exportar_pdf.setEnabled(False)
-        self.btn_exportar_pdf.setStyleSheet(
-            "QPushButton { background-color: #27ae60; color: white; "
-            "padding: 8px 20px; font-weight: bold; border-radius: 4px; }"
-            "QPushButton:hover { background-color: #2ecc71; }"
-        )
+        self.btn_exportar_pdf.setObjectName("success")
         toolbar.addWidget(self.btn_exportar_pdf)
 
         self.btn_abrir = QPushButton("Abrir Archivo")
@@ -70,7 +62,7 @@ class ReportPreview(QWidget):
         toolbar.addWidget(self.chk_disclaimer)
 
         self.lbl_estado = QLabel("Listo para generar informe")
-        self.lbl_estado.setStyleSheet("color: #555; font-style: italic;")
+        self.lbl_estado.setObjectName("estado")
         toolbar.addWidget(self.lbl_estado)
 
         layout.addLayout(toolbar)
@@ -167,4 +159,5 @@ class ReportPreview(QWidget):
         self.btn_abrir.setEnabled(False)
         self.btn_guardar_como.setEnabled(False)
         self.lbl_estado.setText("Listo para generar informe")
-        self.lbl_estado.setStyleSheet("color: #555; font-style: italic;")
+        # Vuelve al estilo idle de la hoja del tema (QLabel#estado)
+        self.lbl_estado.setStyleSheet("")

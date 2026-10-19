@@ -22,6 +22,27 @@ import src.core.ai_extractor as ae
 from src.utils import error_guard
 
 
+@pytest.fixture(scope="session", autouse=True)
+def aislar_qsettings(tmp_path_factory):
+    """Ningun test toca las preferencias reales del usuario.
+
+    Los tests construyen QSettings() sin organizacion ni aplicacion, asi que
+    PyQt escribe en ~/.config/Unknown Organization.conf del desarrollador (o
+    en el registro en Windows). Se redirige todo a un directorio temporal de
+    la sesion con formato INI en las tres plataformas.
+    """
+    from PyQt6.QtCore import QSettings
+
+    formato = QSettings.Format.IniFormat
+    anterior = QSettings.defaultFormat()
+    QSettings.setDefaultFormat(formato)
+    QSettings.setPath(
+        formato, QSettings.Scope.UserScope, str(tmp_path_factory.mktemp("qsettings"))
+    )
+    yield
+    QSettings.setDefaultFormat(anterior)
+
+
 @pytest.fixture(autouse=True)
 def aislar_ollama(monkeypatch):
     monkeypatch.setattr(ae, "_server_ready", lambda *a, **k: False)

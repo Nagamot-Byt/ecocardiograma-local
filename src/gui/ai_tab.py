@@ -178,12 +178,7 @@ class AITab(QWidget):
         left_layout.addLayout(options)
 
         self.btn_extraer = QPushButton("Extraer Datos con IA")
-        self.btn_extraer.setStyleSheet(
-            "QPushButton { background-color: #1a5276; color: white; "
-            "padding: 8px 20px; font-weight: bold; border-radius: 4px; }"
-            "QPushButton:hover { background-color: #2471a3; }"
-            "QPushButton:disabled { background-color: #b0b7bd; }"
-        )
+        self.btn_extraer.setObjectName("primary")
         self.btn_extraer.clicked.connect(self._on_extract)
         left_layout.addWidget(self.btn_extraer)
 
@@ -201,12 +196,7 @@ class AITab(QWidget):
 
         self.btn_aplicar = QPushButton("Aplicar al Informe")
         self.btn_aplicar.setEnabled(False)
-        self.btn_aplicar.setStyleSheet(
-            "QPushButton { background-color: #27ae60; color: white; "
-            "padding: 8px 20px; font-weight: bold; border-radius: 4px; }"
-            "QPushButton:hover { background-color: #2ecc71; }"
-            "QPushButton:disabled { background-color: #b0b7bd; }"
-        )
+        self.btn_aplicar.setObjectName("success")
         self.btn_aplicar.clicked.connect(self._on_apply)
         right_layout.addWidget(self.btn_aplicar)
 
