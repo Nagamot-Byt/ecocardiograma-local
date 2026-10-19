@@ -44,18 +44,22 @@ class VisualTab(QWidget):
 
         self.input_nombre = QLineEdit()
         self.input_nombre.setPlaceholderText("Nombre del medico")
+        self.input_nombre.setToolTip("Nombre del médico que realizó el estudio")
         info_layout.addRow("Medico:", self.input_nombre)
 
         self.input_edad = QLineEdit()
         self.input_edad.setPlaceholderText("Edad (opcional, solo informativa)")
+        self.input_edad.setToolTip("Edad del paciente en años (opcional)")
         info_layout.addRow("Edad:", self.input_edad)
 
         self.input_fecha = QLineEdit()
         self.input_fecha.setPlaceholderText("DD/MM/AAAA")
+        self.input_fecha.setToolTip("Fecha del estudio en formato DD/MM/AAAA")
         info_layout.addRow("Fecha Estudio:", self.input_fecha)
 
         self.input_notas = QLineEdit()
         self.input_notas.setPlaceholderText("Notas adicionales")
+        self.input_notas.setToolTip("Notas clínicas adicionales sobre el paciente")
         info_layout.addRow("Notas:", self.input_notas)
 
         info_group.setLayout(info_layout)
@@ -76,6 +80,7 @@ class VisualTab(QWidget):
             combo = QComboBox()
             combo.addItems(config["options"])
             combo.setCurrentText(config["default"])
+            combo.setToolTip(config["label"] + ": Grado de insuficiencia (leve / moderada / severa / no)")
             combo.currentTextChanged.connect(lambda: self.data_changed.emit())
             self.combo_map[field_name] = combo
             valv_layout.addRow(config["label"] + ":", combo)
@@ -92,6 +97,9 @@ class VisualTab(QWidget):
             combo = QComboBox()
             combo.addItems(config["options"])
             combo.setCurrentText(config["default"])
+            combo.setAccessibleName(config["label"])
+            combo.setAccessibleDescription("Seleccione el grado de " + config["label"].lower())
+            combo.setToolTip(config["label"] + ": Seleccione el grado correspondiente")
             combo.currentTextChanged.connect(lambda: self.data_changed.emit())
             self.combo_map[field_name] = combo
             contr_layout.addRow(config["label"] + ":", combo)
@@ -99,6 +107,9 @@ class VisualTab(QWidget):
         # Segmentos afectados
         seg_config = self.handler.get_fields_config()["segmentos_afectados"]
         self.input_segmentos = QLineEdit(seg_config.get("placeholder", ""))
+        self.input_segmentos.setAccessibleName(seg_config["label"])
+        self.input_segmentos.setAccessibleDescription("Describa los segmentos cardiacos afectados (ej: basal anteroseptal, medio inferior)")
+        self.input_segmentos.setToolTip("Describa los segmentos cardíacos afectados (ej: basal anteroseptal, medio inferior)")
         self.input_segmentos.textChanged.connect(lambda: self.data_changed.emit())
         self.line_map["segmentos_afectados"] = self.input_segmentos
         contr_layout.addRow(seg_config["label"] + ":", self.input_segmentos)
@@ -110,9 +121,12 @@ class VisualTab(QWidget):
         obs_group = QGroupBox("Observaciones Adicionales")
         obs_layout = QVBoxLayout()
         self.text_observaciones = QTextEdit()
+        self.text_observaciones.setAccessibleName("Observaciones Visuales")
+        self.text_observaciones.setAccessibleDescription("Hallazgos visuales adicionales no categorizados")
         self.text_observaciones.setPlaceholderText(
             "Ingrese hallazgos visuales adicionales..."
         )
+        self.text_observaciones.setToolTip("Hallazgos visuales adicionales no categorizados (ej: trombo en AI, hipertrofia septal, etc.)")
         self.text_observaciones.setMaximumHeight(100)
         self.text_observaciones.textChanged.connect(lambda: self.data_changed.emit())
         self.text_map["observaciones_visuales"] = self.text_observaciones

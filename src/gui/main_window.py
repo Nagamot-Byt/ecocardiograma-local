@@ -11,7 +11,7 @@ from PyQt6.QtWidgets import (
     QFileDialog, QMessageBox, QFrame,
 )
 from PyQt6.QtGui import QAction
-from PyQt6.QtCore import QThread, pyqtSignal
+from PyQt6.QtCore import QThread, pyqtSignal, Qt, QPropertyAnimation, QEasingCurve, QSettings
 
 from src.models.patient import Patient, Sexo
 from src.models.colombian_reference import load_colombian_references, GUIDE_NAME
@@ -33,6 +33,99 @@ from src.core.version import APP_NAME, APP_VERSION
 
 logger = setup_logger()
 
+# Hoja de estilos global
+STYLESHEET = """
+QMainWindow {
+    background-color: #f8f9fa;
+}
+QFrame#header {
+    background: #1a5276;
+    border-radius: 6px;
+}
+QLabel#title {
+    color: white;
+    font-size: 16pt;
+    font-weight: bold;
+}
+QLabel#version {
+    color: #aed6f1;
+    font-size: 9pt;
+}
+QLabel {
+    color: #333;
+    font-size: 11pt;
+}
+QPushButton {
+    font-size: 11pt;
+    border-radius: 4px;
+}
+QPushButton#primary {
+    background-color: #1a5276;
+    color: white;
+    padding: 6px 16px;
+    font-weight: bold;
+}
+QPushButton#primary:hover {
+    background-color: #2471a3;
+}
+QPushButton#success {
+    background-color: #27ae60;
+    color: white;
+    padding: 6px 16px;
+    font-weight: bold;
+}
+QPushButton#success:hover {
+    background-color: #2ecc71;
+}
+QPushButton#warning {
+    background-color: #f39c12;
+    color: white;
+    padding: 6px 16px;
+    font-weight: bold;
+}
+QPushButton#danger {
+    background-color: #c0392b;
+    color: white;
+    padding: 6px 16px;
+    font-weight: bold;
+}
+QTabBar::tab {
+    padding: 8px 20px;
+    font-size: 11pt;
+}
+QTabBar::tab:selected {
+    font-weight: bold;
+}
+QComboBox {
+    padding: 4px 10px;
+    font-size: 11pt;
+    min-width: 120px;
+}
+QDoubleSpinBox {
+    font-size: 11pt;
+    min-width: 120px;
+}
+QLiveStatus {
+    font-size: 10pt;
+}
+"""
+
+# Estilos de focus states: SIEMPRE se aplican (claro y oscuro)
+FOCUS_STYLESHEET = (
+    "QLineEdit:focus { border: 2px solid #1a5276; background-color: #e8f0fe; } "
+    "QDoubleSpinBox:focus { border: 2px solid #1a5276; background-color: #e8f0fe; } "
+    "QComboBox:focus { border: 2px solid #1a5276; background-color: #e8f0fe; }"
+)
+
+# Capa extra del modo oscuro (se combina con FOCUS_STYLESHEET)
+DARK_STYLESHEET = (
+    "QMainWindow { background-color: #2b2b2b; } "
+    "QLabel { color: #f0f0f0; } "
+    "QPushButton { background-color: #3d3d3d; color: white; } "
+    "QPushButton:focus { border: 2px solid #1a5276; background-color: #4a4a4a; } "
+    "QDoubleSpinBox:focus { border: 2px solid #1a5276; background-color: #4a4a4a; } "
+    "QComboBox:focus { border: 2px solid #1a5276; background-color: #4a4a4a; }"
+)
 
 class UpdateCheckWorker(QThread):
     """Consulta GitHub Releases en un hilo para no congelar la UI."""
@@ -69,6 +162,34 @@ class MainWindow(QMainWindow):
         self.config = load_config()
         self.patient = Patient()
         self.patient.id = generate_patient_id()
+        self.dark_mode = False
+        self._show_welcome = True
+
+        # Cargar preferencias de QSettings
+        settings = QSettings()
+        self.dark_mode = settings.value("dark_mode", False, type=bool)
+        
+        # Aplicar tema si es oscuro (se aplica al final de _build_ui vía
+        # _apply_theme, porque setStyleSheet posterior lo sobrescribiria)
+
+        # Accesos directos de teclado
+        self.acceso_nuevo = QAction("Nuevo paciente", self)
+        self.acceso_nuevo.setShortcut("Ctrl+N")
+        self.acceso_nuevo.triggered.connect(self._on_new_patient)
+
+        self.acceso_cargar = QAction("Cargar datos", self)
+        self.acceso_cargar.setShortcut("Ctrl+O")
+        self.acceso_cargar.triggered.connect(self._on_load_file)
+
+        self.acceso_validar = QAction("Validar ahora", self)
+        self.acceso_validar.setShortcut("F5")
+        self.acceso_validar.triggered.connect(self._on_validate)
+
+        self.acceso_tema = QAction("Modo tema", self)
+        self.acceso_tema.setShortcut("Ctrl+T")
+        self.acceso_tema.triggered.connect(self._on_toggle_theme_shortcut)
+
+        # Estilos de focus (claro/oscuro) aplicados en _apply_theme()
 
         # Componentes de negocio
         if self.config.guide == "colombian":
@@ -104,6 +225,7 @@ class MainWindow(QMainWindow):
 
         self._build_ui()
         self._connect_signals()
+        self._apply_theme()
         self._cleanup_stale_session()
 
         # Chequeo silencioso de actualizaciones al arrancar (si esta habilitado)
@@ -156,6 +278,12 @@ class MainWindow(QMainWindow):
         # Menu Ayuda
         menu_ayuda = menubar.addMenu("Ayuda")
 
+        self.act_tema = QAction("Modo Oscuro", self, checkable=True)
+        self.act_tema.setChecked(self.dark_mode)
+        self.act_tema.setToolTip("Alternar entre modo claro y modo oscuro")
+        self.act_tema.toggled.connect(self._on_toggle_theme)
+        menu_ayuda.addAction(self.act_tema)
+
         act_actualizar = QAction("Buscar Actualizaciones...", self)
         act_actualizar.triggered.connect(self._on_check_updates)
         menu_ayuda.addAction(act_actualizar)
@@ -202,6 +330,9 @@ class MainWindow(QMainWindow):
         self.combo_sexo.setStyleSheet(
             "QComboBox { padding: 4px 10px; font-size: 11pt; min-width: 120px; }"
         )
+        self.combo_sexo.setAccessibleName("Sexo del Paciente")
+        self.combo_sexo.setAccessibleDescription("Seleccione el sexo del paciente para rangos de validacion")
+        self.combo_sexo.setToolTip("Seleccionar sexo del paciente para rangos de validacion")
         header_layout.addWidget(self.combo_sexo)
 
         # ID del paciente
@@ -215,8 +346,38 @@ class MainWindow(QMainWindow):
         btn_validar = QPushButton("Validar Datos")
         btn_validar.setStyleSheet(
             "QPushButton { background: #f39c12; color: white; "
-            "padding: 6px 16px; font-weight: bold; border-radius: 4px; }"
+            "padding: 6px 16px; font-weight: bold; border-radius: 4px; } "
+            "QPushButton:hover { background: #e67e22; } "
+            "QPushButton:pressed { background: #d35400; }"
         )
+        btn_validar.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_validar.setAccessibleName("Validar Datos")
+        btn_validar.setAccessibleDescription("Valida los datos actuales contra los rangos de referencia")
+        btn_validar.setToolTip("Valida los datos actuales contra los rangos de referencia (F5)")
+        # Animaciones para micro-interacciones
+        self.btn_validar_anim = QPropertyAnimation(btn_validar, b"styleSheet")
+        self.btn_validar_anim.setDuration(150)
+        self.btn_validar_anim.setEasingCurve(QEasingCurve.Type.OutCubic)
+        
+        def on_enter():
+            self.btn_validar_anim.setStartValue(btn_validar.styleSheet())
+            self.btn_validar_anim.setEndValue(
+                "QPushButton { background: #e67e22; color: white; "
+                "padding: 6px 16px; font-weight: bold; border-radius: 4px; }"
+            )
+            self.btn_validar_anim.start()
+        
+        def on_leave():
+            self.btn_validar_anim.setStartValue(btn_validar.styleSheet())
+            self.btn_validar_anim.setEndValue(
+                "QPushButton { background: #f39c12; color: white; "
+                "padding: 6px 16px; font-weight: bold; border-radius: 4px; }"
+            )
+            self.btn_validar_anim.start()
+        
+        btn_validar.enterEvent = lambda e: on_enter()
+        btn_validar.leaveEvent = lambda e: on_leave()
+        
         header_layout.addWidget(btn_validar)
         self.btn_validar = btn_validar
 
@@ -248,6 +409,10 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(self.report_tab, "Informe")
 
         main_layout.addWidget(self.tabs)
+
+        # Orden de tabulacion explicito: cabecera -> contenido
+        QWidget.setTabOrder(self.combo_sexo, self.btn_validar)
+        QWidget.setTabOrder(self.btn_validar, self.tabs)
 
         # Status bar
         self.statusBar().showMessage(
@@ -307,6 +472,27 @@ class MainWindow(QMainWindow):
             self.numeric_tab.set_live_status(
                 "Todos los valores dentro de rango normal", warn=False
             )
+
+    def _apply_theme(self):
+        """Aplica el stylesheet combinado (focus states + modo oscuro si aplica)."""
+        partes = []
+        if self.dark_mode:
+            partes.append(DARK_STYLESHEET)
+        partes.append(FOCUS_STYLESHEET)
+        self.setStyleSheet(" ".join(partes))
+        if hasattr(self, "act_tema"):
+            self.act_tema.setText("Modo Claro" if self.dark_mode else "Modo Oscuro")
+
+    def _on_toggle_theme_shortcut(self):
+        """Acceso directo Ctrl+T para alternar tema."""
+        self.act_tema.setChecked(not self.act_tema.isChecked())
+
+    def _on_toggle_theme(self, checked: bool):
+        """Alternar entre modo claro y modo oscuro."""
+        self.dark_mode = checked
+        settings = QSettings()
+        settings.setValue("dark_mode", checked)
+        self._apply_theme()
 
     def _on_validate(self):
         """Valida los datos actuales contra los rangos ASE."""
@@ -558,6 +744,33 @@ class MainWindow(QMainWindow):
                 f"({len(result['user_input'])} input, {len(result['output'])} output)"
             )
 
+    def show_welcome_if_first_time(self):
+        """Asistente de bienvenida: se muestra SOLO en la primera ejecucion.
+
+        Se invoca desde main.py (nunca desde __init__) para no interferir
+        con la creacion de la ventana ni con la suite de tests.
+        """
+        if not self._show_welcome:
+            return
+        settings = QSettings()
+        if settings.value("onboarding_done", False, type=bool):
+            return
+        QMessageBox.information(
+            self, "Bienvenido - Guia rapida",
+            "<b>Como usar la aplicacion (4 pasos):</b>"
+            "<ol>"
+            "<li>Ingrese los <b>datos numericos</b> "
+            "(o pulse 'Datos de prueba' para ver un ejemplo).</li>"
+            "<li>Registre los <b>hallazgos visuales</b>.</li>"
+            "<li>Opcional: use la pestana <b>IA</b> para extraccion "
+            "automatica del informe.</li>"
+            "<li><b>Valide</b> los datos y genere el <b>informe PDF</b>.</li>"
+            "</ol>"
+            "<b>Atajos de teclado:</b> Ctrl+N nuevo paciente · "
+            "Ctrl+O cargar datos · F5 validar · Ctrl+T modo oscuro"
+        )
+        settings.setValue("onboarding_done", True)
+
     def _show_about(self):
         QMessageBox.about(
             self, "Acerca de Ecocardiograma Local",
@@ -657,8 +870,26 @@ class MainWindow(QMainWindow):
         # 2. Esperar al hilo de verificacion de actualizaciones si sigue corriendo
         try:
             worker = getattr(self, "_update_worker", None)
-            if worker is not None and worker.isRunning():
-                worker.wait(2000)
+            if worker is not None:
+                # Desconectar ANTES de esperar: si la senal 'finished_check'
+                # se entregara despues de destruir la ventana, el slot
+                # accederia a un widget ya eliminado (RuntimeError de Qt).
+                for senal in ("finished_check", "finished"):
+                    try:
+                        getattr(worker, senal).disconnect()
+                    except (TypeError, RuntimeError):
+                        pass
+                if worker.isRunning():
+                    if not worker.wait(2000):
+                        # Ultimo recurso: Qt aborta el proceso si el QThread
+                        # sigue corriendo al destruir la ventana; se aborta el
+                        # hilo (proceso a punto de salir) antes que dejar crashear.
+                        logger.warning(
+                            "Hilo de actualizaciones no termino a tiempo; "
+                            "se aborta para evitar el cierre inseguro de Qt."
+                        )
+                        worker.terminate()
+                        worker.wait(1000)
         except Exception as e:  # noqa: BLE001
             logger.warning(f"Advertencia esperando hilo de actualizaciones: {e}")
         # 3. Limpieza segura de temporales (critica: contiene PHI potencial)

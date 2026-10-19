@@ -77,6 +77,9 @@ class NumericTab(QWidget):
             spin.setSpecialValueText("-")
             spin.setMinimumWidth(120)
             spin.valueChanged.connect(lambda val, a=attr: self._on_value_changed(a))
+            spin.setAccessibleName(label)
+            spin.setAccessibleDescription(f"Valor del ecocardiograma {attr} en {unidad}. Rango: {min_val}-{max_val} {unidad}")
+            spin.setToolTip(f"{attr}: Valor del ecocardiograma en {unidad}")
             row_layout.addWidget(spin)
             row_layout.addStretch()
             self.spinbox_map[attr] = spin
@@ -97,6 +100,13 @@ class NumericTab(QWidget):
         self.live_status.setStyleSheet("font-size: 10pt; color: #555;")
         layout.addWidget(self.live_status)
         layout.addStretch()
+
+        # Orden de tabulacion explicito entre los campos (navegacion con Tab)
+        anterior = None
+        for spin in self.spinbox_map.values():
+            if anterior is not None:
+                QWidget.setTabOrder(anterior, spin)
+            anterior = spin
 
     def set_live_status(self, text: str, warn: bool = False):
         """Muestra el resumen en vivo de la validacion y sugerencias."""

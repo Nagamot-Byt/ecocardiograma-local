@@ -30,9 +30,12 @@ jobs:
           sudo -n true 2>/dev/null || true
 
       - name: Lint (ruff)
-        run: ruff check src tests
+        run: ruff check src tests scripts
 
-      - name: Tests con cobertura (umbral en pyproject.toml)
+      - name: Verificar sincronia de version
+        run: python scripts/check_version.py
+
+      - name: Tests con cobertura (umbral 90% en pyproject.toml)
         env:
           QT_QPA_PLATFORM: offscreen
         run: xvfb-run -a pytest --cov=src --cov-report=term-missing

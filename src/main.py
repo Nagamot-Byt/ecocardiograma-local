@@ -46,6 +46,8 @@ def main():
     try:
         window = MainWindow()
         window.show()
+        # Asistente de bienvenida: solo en la primera ejecucion
+        window.show_welcome_if_first_time()
         sys.exit(app.exec())
     except Exception as e:
         print(f"Error fatal iniciando la aplicacion: {e}")

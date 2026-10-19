@@ -1,6 +1,6 @@
 [build-system]
 requires = ["setuptools>=68.0", "wheel"]
-build-backend = "setuptools.backends._legacy:_Backend"
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "ecocardiograma-local"
@@ -22,16 +22,17 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Medical Science Apps.",
 ]
 
+# Mantenidos sincronizados con requirements.txt (mismos rangos).
 dependencies = [
-    "pandas>=2.2",
-    "openpyxl>=3.1",
-    "PyQt6>=6.7",
-    "jinja2>=3.1",
-    "pyyaml>=6.0",
-    "requests>=2.31",
-    "pypdf>=4.0",
-    "pytesseract>=0.3.10",
-    "pillow>=10.0",
+    "PyQt6>=6.11,<7",
+    "pandas>=3.0,<4",
+    "openpyxl>=3.1,<4",
+    "Jinja2>=3.1,<4",
+    "PyYAML>=6.0,<7",
+    "requests>=2.34,<3",
+    "pypdf>=6.15,<7",
+    "pillow>=12.3,<13",
+    "pytesseract>=0.3,<1",
 ]
 
 [project.optional-dependencies]
@@ -61,9 +62,9 @@ source = ["src"]
 omit = ["src/main.py"]
 
 [tool.coverage.report]
-# Umbral minimo de cobertura. Sube conforme se cubran rutas de la GUI.
-# Medir con: pytest --cov=src --cov-report=term-missing
-fail_under = 75
+# Umbral minimo de cobertura: 90%, el mismo que aplica pytest.ini (addopts)
+# y el job de CI. Medir con: pytest --cov=src --cov-report=term-missing
+fail_under = 90
 skip_covered = false
 
 [tool.ruff]
