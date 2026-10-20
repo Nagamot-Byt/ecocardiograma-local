@@ -27,7 +27,7 @@ CHECKS = [
     ("installer/ecocardiograma.iss", r'#define MyAppVersion "([^"]+)"', "Inno Setup"),
     ("version_info.txt", r"StringStruct\('FileVersion',\s*'([0-9.]+)'", "FileVersion (exe Windows)"),
     ("version_info.txt", r"StringStruct\('ProductVersion',\s*'([0-9.]+)'", "ProductVersion (exe Windows)"),
-    ("docs/GUIA_DE_USO.md", r"\*\*Versi[oó]n ([0-9][0-9.]*) ", "guia de uso del cliente"),
+    ("docs/GUIA_DE_USO.md", r"\*\*Versi[oó]n\s+([0-9][0-9.]*)\b", "guia de uso del cliente"),
     ("README.md", r"\*\*Ultima version: v([0-9][0-9.]*)\*\*", "seccion instalador del README"),
 ]
 
